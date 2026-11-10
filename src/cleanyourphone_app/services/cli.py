@@ -110,6 +110,163 @@ def _disabled_packages(payload: Any) -> set[str]:
     return packages
 
 
+_DNS_CHECK_TEXT_FIELDS = (
+    "ad_domain",
+    "ad_ip",
+    "ad_state",
+    "control_domain",
+    "control_ip",
+    "control_state",
+)
+_BENCH_REQUIRED_KEYS = (
+    "timestamp",
+    "model",
+    "android",
+    "build",
+    "ram_available_mb",
+    "packages_enabled",
+)
+
+
+def _mapping(payload: Any, subject: str) -> Mapping[str, Any]:
+    if not isinstance(payload, Mapping):
+        raise ValueError(f"{subject} must be a JSON object")
+    return payload
+
+
+def _text(payload: Mapping[str, Any], key: str, subject: str) -> str:
+    value = payload.get(key)
+    if not isinstance(value, str):
+        raise ValueError(f"{subject} field {key!r} must be a string")
+    return value
+
+
+def _non_empty_text(payload: Mapping[str, Any], key: str, subject: str) -> str:
+    value = _text(payload, key, subject)
+    if not value.strip():
+        raise ValueError(f"{subject} field {key!r} must be a non-empty string")
+    return value
+
+
+def _path_argument(name: str, value: str | os.PathLike[str]) -> str:
+    try:
+        path = os.fspath(value)
+    except TypeError as exc:
+        raise ValueError(f"{name} must be a filesystem path") from exc
+    if not isinstance(path, str) or not path.strip():
+        raise ValueError(f"{name} must be a non-empty path")
+    return path
+
+
+def _dns_providers_payload(payload: Any) -> dict[str, dict[str, str]]:
+    providers = _mapping(payload, "dns providers payload")
+    if not providers:
+        raise ValueError("dns providers returned no presets")
+
+    normalized: dict[str, dict[str, str]] = {}
+    for name, item in providers.items():
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("dns providers preset names must be non-empty strings")
+        subject = f"dns providers preset {name!r}"
+        preset = _mapping(item, subject)
+        normalized[name] = {
+            "host": _non_empty_text(preset, "host", subject),
+            "description": _non_empty_text(preset, "description", subject),
+        }
+    return normalized
+
+
+def _dns_status_payload(payload: Any) -> dict[str, str]:
+    status = _mapping(payload, "dns status payload")
+    return {
+        "mode": _non_empty_text(status, "mode", "dns status"),
+        "specifier": _text(status, "specifier", "dns status"),
+    }
+
+
+def _dns_check_payload(payload: Any) -> dict[str, Any]:
+    check = _mapping(payload, "dns check payload")
+    normalized: dict[str, Any] = {}
+    for key in _DNS_CHECK_TEXT_FIELDS:
+        normalized[key] = _text(check, key, "dns check")
+    for key in ("ad_domain", "control_domain"):
+        if not normalized[key].strip():
+            raise ValueError(f"dns check field {key!r} must be a non-empty string")
+
+    blocked = check.get("ad_blocked")
+    if blocked is not None and not isinstance(blocked, bool):
+        raise ValueError("dns check field 'ad_blocked' must be true, false or null")
+    online = check.get("online")
+    if not isinstance(online, bool):
+        raise ValueError("dns check field 'online' must be true or false")
+
+    normalized["ad_blocked"] = blocked
+    normalized["online"] = online
+    return normalized
+
+
+def _bench_snapshot_payload(payload: Any) -> dict[str, Any]:
+    snapshot = _mapping(payload, "bench snapshot payload")
+    path = _non_empty_text(snapshot, "path", "bench snapshot")
+    data = _mapping(snapshot.get("data"), "bench snapshot data")
+
+    missing = [key for key in _BENCH_REQUIRED_KEYS if key not in data]
+    if missing:
+        raise ValueError(f"bench snapshot data is missing: {', '.join(missing)}")
+    for key in ("timestamp", "model", "android", "build"):
+        _text(data, key, "bench snapshot data")
+    for key in ("ram_available_mb", "packages_enabled"):
+        value = data.get(key)
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, (int, float))
+        ):
+            raise ValueError(
+                f"bench snapshot data field {key!r} must be a number or null"
+            )
+    return {"path": path, "data": dict(data)}
+
+
+def _bench_compare_payload(payload: Any) -> dict[str, Any]:
+    comparison = _mapping(payload, "bench compare payload")
+    path = _non_empty_text(comparison, "path", "bench compare")
+    rows = comparison.get("rows")
+    if not isinstance(rows, list):
+        raise ValueError("bench compare field 'rows' must be a list")
+
+    normalized: list[dict[str, Any]] = []
+    for index, item in enumerate(rows):
+        subject = f"bench compare row {index}"
+        row = _mapping(item, subject)
+        result: dict[str, Any] = {
+            "metric": _non_empty_text(row, "metric", subject),
+            "label": _non_empty_text(row, "label", subject),
+        }
+        for key in ("before", "after", "delta"):
+            value = row.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"{subject} field {key!r} must be a number")
+            result[key] = value
+        pct = row.get("pct")
+        if pct is not None and (
+            isinstance(pct, bool) or not isinstance(pct, (int, float))
+        ):
+            raise ValueError(f"{subject} field 'pct' must be a number or null")
+        result["pct"] = pct
+        normalized.append(result)
+    return {"path": path, "rows": normalized}
+
+
+def _bench_list_payload(payload: Any) -> list[str]:
+    if not isinstance(payload, list):
+        raise ValueError("bench list payload must be a list")
+    paths: list[str] = []
+    for index, path in enumerate(payload):
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError(f"bench list entry {index} must be a non-empty string")
+        paths.append(path)
+    return paths
+
+
 class CliClient:
     """Starts the CLI with a fixed, app-owned environment.
 
@@ -240,6 +397,68 @@ class CliClient:
         return self._read_json(
             ("--json", "list", "--state", "disabled"),
             _disabled_packages,
+        )
+
+    def dns_providers(self) -> dict[str, dict[str, str]]:
+        """Return the CLI's ad-blocking presets: ``{name: {host, description}}``."""
+        return self._read_json(
+            ("--json", "dns", "providers"),
+            _dns_providers_payload,
+        )
+
+    def dns_status(self) -> dict[str, str]:
+        """Return the current Private DNS ``{mode, specifier}``."""
+        return self._read_json(
+            ("--json", "dns", "status"),
+            _dns_status_payload,
+        )
+
+    def dns_set(self, provider: str) -> CliResult:
+        """Set a preset alias or a raw Private DNS hostname (journaled)."""
+        if not isinstance(provider, str) or not provider.strip():
+            raise ValueError("provider must be a non-empty string")
+        return self.run(("dns", "set", provider))
+
+    def dns_off(self) -> CliResult:
+        """Return Private DNS to the Android default (journaled)."""
+        return self.run(("dns", "off"))
+
+    def dns_check(self) -> dict[str, Any]:
+        # `dns check` exits 1 when ads are not confirmed blocked or the phone
+        # cannot be tested. That payload is exactly what the UI has to show.
+        return self._read_json(
+            ("--json", "dns", "check"),
+            _dns_check_payload,
+            accepted_returncodes=(0, 1),
+        )
+
+    def bench_snapshot(self, label: str) -> dict[str, Any]:
+        """Save a local measurement and return its ``{path, data}``."""
+        if not isinstance(label, str) or not label.strip():
+            raise ValueError("label must be a non-empty string")
+        return self._read_json(
+            ("--json", "bench", "snapshot", "--label", label),
+            _bench_snapshot_payload,
+        )
+
+    def bench_compare(
+        self,
+        before: str | os.PathLike[str],
+        after: str | os.PathLike[str],
+    ) -> dict[str, Any]:
+        """Compare two saved snapshots and return the report ``{path, rows}``."""
+        before_path = _path_argument("before", before)
+        after_path = _path_argument("after", after)
+        return self._read_json(
+            ("--json", "bench", "compare", before_path, after_path),
+            _bench_compare_payload,
+        )
+
+    def bench_list(self) -> list[str]:
+        """Return the saved snapshot paths, newest first."""
+        return self._read_json(
+            ("--json", "bench", "list"),
+            _bench_list_payload,
         )
 
     def backup(self) -> CliResult:

@@ -57,6 +57,84 @@ VERIFY_CHECKS = [
     {"check": "Home", "status": "PASS", "detail": "com.google.android.apps.nexuslauncher"},
 ]
 
+DNS_PROVIDERS = {
+    "adguard": {
+        "host": "dns.adguard-dns.com",
+        "description": "AdGuard DNS: ads and trackers",
+    },
+    "adguard-family": {
+        "host": "family.adguard-dns.com",
+        "description": "AdGuard Family: ads, trackers and adult sites",
+    },
+    "controld": {
+        "host": "p2.freedns.controld.com",
+        "description": "Control D free: ads and trackers",
+    },
+    "mullvad": {
+        "host": "adblock.dns.mullvad.net",
+        "description": "Mullvad DNS: ads and trackers",
+    },
+}
+
+DNS_STATUS = {"mode": "hostname", "specifier": "dns.adguard-dns.com"}
+
+DNS_CHECK = {
+    "ad_domain": "doubleclick.net",
+    "ad_ip": "0.0.0.0",
+    "ad_state": "blocked",
+    "ad_blocked": True,
+    "control_domain": "wikipedia.org",
+    "control_ip": "203.0.113.7",
+    "control_state": "ok",
+    "online": True,
+}
+
+BENCH_DATA = {
+    "timestamp": "2026-11-10 10:00:00",
+    "model": "Google Pixel 8",
+    "android": "14",
+    "build": "AP1A.240505.004",
+    "ram_available_mb": 2048,
+    "swap_used_mb": 512,
+    "processes": 320,
+    "packages_installed": 210,
+    "packages_enabled": 200,
+    "packages_disabled": 10,
+    "packages_system": 150,
+    "packages_user": 60,
+    "animation_window": 1.0,
+    "animation_transition": 1.0,
+    "animation_duration": 1.0,
+    "peak_refresh_rate": 120.0,
+    "private_dns_mode": "hostname",
+    "private_dns_specifier": "dns.adguard-dns.com",
+    "battery_saver": False,
+}
+
+BENCH_ROWS = [
+    {
+        "metric": "ram_available_mb",
+        "label": "RAM available (MB)",
+        "before": 1000,
+        "after": 1200,
+        "delta": 200,
+        "pct": 20.0,
+    },
+    {
+        "metric": "packages_enabled",
+        "label": "Packages enabled",
+        "before": 210,
+        "after": 200,
+        "delta": -10,
+        "pct": -4.8,
+    },
+]
+
+BENCH_PATHS = [
+    "C:/fake/bench/20260101_000000_after.json",
+    "C:/fake/bench/20260101_000000_before.json",
+]
+
 ENV_KEYS = (
     "ADB",
     "CLEANYOURPHONE_PROFILES",
@@ -99,6 +177,65 @@ def _option(argv: list[str], name: str, default: str | None = None) -> str | Non
     if index + 1 >= len(argv):
         return default
     return argv[index + 1]
+
+
+def _dns(rest: list[str]) -> int:
+    subcommand = rest[0] if rest else ""
+
+    if subcommand == "providers":
+        print(_json_text("dns_providers", DNS_PROVIDERS))
+        return _exit_code("DNS_PROVIDERS")
+
+    if subcommand == "status":
+        print(_json_text("dns_status", DNS_STATUS))
+        return _exit_code("DNS_STATUS")
+
+    if subcommand == "check":
+        print(_json_text("dns_check", DNS_CHECK))
+        return _exit_code("DNS_CHECK")
+
+    if subcommand == "set":
+        provider = rest[1] if len(rest) > 1 else "(missing)"
+        print(f"Private DNS set to {provider}. Undo: cleanyourphone dns restore")
+        return _exit_code("DNS_SET")
+
+    if subcommand == "off":
+        print("Private DNS set to opportunistic (the Android default).")
+        return _exit_code("DNS_OFF")
+
+    print(f"error: unknown dns command {subcommand}", file=sys.stderr)
+    return 2
+
+
+def _bench(rest: list[str]) -> int:
+    subcommand = rest[0] if rest else ""
+
+    if subcommand == "snapshot":
+        label = _option(rest, "--label", "snapshot") or "snapshot"
+        payload = {
+            "path": f"C:/fake/bench/20260101_000000_{label}.json",
+            "data": BENCH_DATA,
+        }
+        print(_json_text("bench_snapshot", payload))
+        return _exit_code("BENCH_SNAPSHOT")
+
+    if subcommand == "compare":
+        if len(rest) < 3:
+            print("error: compare needs two snapshots", file=sys.stderr)
+            return 2
+        payload = {
+            "path": "C:/fake/bench/compare-20260101_000000.md",
+            "rows": BENCH_ROWS,
+        }
+        print(_json_text("bench_compare", payload))
+        return _exit_code("BENCH_COMPARE")
+
+    if subcommand == "list":
+        print(_json_text("bench_list", BENCH_PATHS))
+        return _exit_code("BENCH_LIST")
+
+    print(f"error: unknown bench command {subcommand}", file=sys.stderr)
+    return 2
 
 
 def main(argv: list[str]) -> int:
@@ -161,6 +298,12 @@ def main(argv: list[str]) -> int:
         ]
         print(_json_text("list", rows))
         return _exit_code("LIST")
+
+    if command == "dns":
+        return _dns(rest)
+
+    if command == "bench":
+        return _bench(rest)
 
     if command == "backup":
         print("Backup written to C:/fake/backup/session")
