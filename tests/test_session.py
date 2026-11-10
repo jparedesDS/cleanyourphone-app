@@ -137,6 +137,35 @@ def test_connected_stores_the_exact_serial_and_probe():
     assert s.profile_id == "pixel-8"
 
 
+def test_failed_connected_leaves_the_session_unchanged():
+    s = SessionController()
+    s.start()
+
+    with pytest.raises(ValueError):
+        s.connected("usb-1", Transport.USB, probe(), profile_id="   ")
+
+    assert s.state is SessionState.CONNECTING
+    assert s.serial is None
+    assert s.transport is None
+    assert s.probe is None
+    assert s.profile_id is None
+
+
+@pytest.mark.parametrize("invalid_probe", [None, object(), {"brand": "Google"}])
+def test_connected_rejects_a_missing_or_invalid_probe(invalid_probe):
+    s = SessionController()
+    s.start()
+
+    with pytest.raises(TypeError):
+        s.connected("usb-1", Transport.USB, invalid_probe, profile_id="pixel-8")
+
+    assert s.state is SessionState.CONNECTING
+    assert s.serial is None
+    assert s.transport is None
+    assert s.probe is None
+    assert s.profile_id is None
+
+
 def test_blocked_stores_the_reason_and_link():
     decision = decide_support(probe(auto_apply_profiles=()))
 
@@ -171,6 +200,47 @@ def test_checked_stores_the_profile_and_moves_to_backup():
     assert s.state is SessionState.BACKUP
     assert s.profile_id == "pixel-8"
     assert s.probe is phone
+
+
+def test_failed_checked_leaves_the_session_unchanged():
+    phone = probe()
+
+    s = SessionController()
+    s.start()
+    s.connected("usb-1", Transport.USB, phone, profile_id="pixel-8")
+
+    with pytest.raises(ValueError):
+        s.checked(probe(device="other"), profile_id="   ")
+
+    assert s.state is SessionState.CHECKING
+    assert s.probe is phone
+    assert s.profile_id == "pixel-8"
+
+
+def test_checked_rejects_a_non_probe_without_moving_on():
+    phone = probe()
+
+    s = SessionController()
+    s.start()
+    s.connected("usb-1", Transport.USB, phone, profile_id="pixel-8")
+
+    with pytest.raises(TypeError):
+        s.checked(object(), "pixel-8")
+
+    assert s.state is SessionState.CHECKING
+    assert s.probe is phone
+
+
+def test_checked_without_a_probe_is_rejected():
+    s = SessionController()
+    s.start()
+    s.connected("usb-1", Transport.USB, probe(), profile_id="pixel-8")
+    s.probe = None
+
+    with pytest.raises(InvalidTransition):
+        s.checked()
+
+    assert s.state is SessionState.CHECKING
 
 
 def test_selection_is_unique_and_keeps_order():
@@ -220,6 +290,33 @@ def test_can_apply_needs_a_non_empty_selection():
     s.connected("usb-1", Transport.USB, probe(), profile_id="pixel-8")
     s.backup_done(Path("C:/backup/one"))
     s.set_selection([])
+
+    assert s.can_apply() is False
+
+
+def test_backup_done_cannot_skip_the_probe():
+    s = SessionController()
+    s.start()
+    s.state = SessionState.CHECKING
+    s.serial = "usb-1"
+    s.transport = Transport.USB
+
+    with pytest.raises(InvalidTransition):
+        s.backup_done(Path("C:/backup/one"))
+
+    assert s.state is SessionState.CHECKING
+    assert s.backup_path is None
+
+
+def test_can_apply_needs_a_probe():
+    s = SessionController()
+    s.start()
+    s.connected("usb-1", Transport.USB, probe(), profile_id="pixel-8")
+    s.backup_done(Path("C:/backup/one"))
+    s.set_selection(["com.google.android.apps.wellbeing"])
+    assert s.can_apply() is True
+
+    s.probe = None
 
     assert s.can_apply() is False
 

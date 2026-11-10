@@ -64,6 +64,12 @@ def _require_backup_path(value: str | Path) -> Path:
     return Path(value)
 
 
+def _require_probe(probe: ProbeData) -> ProbeData:
+    if not isinstance(probe, ProbeData):
+        raise TypeError("probe must be a ProbeData")
+    return probe
+
+
 class SessionController:
     """In-memory state for one guided cleanup session.
 
@@ -100,16 +106,20 @@ class SessionController:
         self._require_state(SessionState.WELCOME, action="start")
         self.state = SessionState.CONNECTING
 
-    def set_transport(self, transport: Transport) -> Transport:
-        """Choose the transport, or confirm the one already pinned."""
+    def _require_transport(self, transport: Transport) -> Transport:
         if not isinstance(transport, Transport):
             raise TypeError("transport must be a Transport")
         if self.serial is not None and transport is not self.transport:
+            current = self.transport.value if self.transport is not None else "unknown"
             raise TransportLocked(
-                "this session is already using "
-                f"{self.transport.value}; start a new session to change transport"
+                f"this session is already using {current}; "
+                "start a new session to change transport"
             )
-        self.transport = transport
+        return transport
+
+    def set_transport(self, transport: Transport) -> Transport:
+        """Choose the transport, or confirm the one already pinned."""
+        self.transport = self._require_transport(transport)
         return transport
 
     def connected(
@@ -126,13 +136,17 @@ class SessionController:
             SessionState.CHECKING,
             action="connect",
         )
-        serial = _require_text(serial, "serial")
-        self.set_transport(transport)
-        self.serial = serial
-        self.probe = probe
-        self.profile_id = (
+        checked_serial = _require_text(serial, "serial")
+        checked_probe = _require_probe(probe)
+        checked_profile = (
             _require_text(profile_id, "profile id") if profile_id is not None else None
         )
+        checked_transport = self._require_transport(transport)
+
+        self.transport = checked_transport
+        self.serial = checked_serial
+        self.probe = checked_probe
+        self.profile_id = checked_profile
         self.blocked_reason = None
         self.blocked_link = None
         self.error_message = None
@@ -147,12 +161,17 @@ class SessionController:
             SessionState.BACKUP,
             action="record a passed check",
         )
-        if probe is not None:
-            self.probe = probe
-        if profile_id is not None:
-            self.profile_id = _require_text(profile_id, "profile id")
-        if self.probe is None:
+        checked_probe = self.probe if probe is None else _require_probe(probe)
+        checked_profile = (
+            self.profile_id
+            if profile_id is None
+            else _require_text(profile_id, "profile id")
+        )
+        if not isinstance(checked_probe, ProbeData):
             raise InvalidTransition("cannot pass the check before probing the device")
+
+        self.probe = checked_probe
+        self.profile_id = checked_profile
         self.state = SessionState.BACKUP
 
     def begin_backup(self) -> None:
@@ -162,7 +181,7 @@ class SessionController:
             SessionState.BACKUP,
             action="start the backup",
         )
-        if self.probe is None:
+        if not isinstance(self.probe, ProbeData):
             raise InvalidTransition("cannot back up before probing the device")
         self.state = SessionState.BACKUP
 
@@ -189,7 +208,11 @@ class SessionController:
             SessionState.BACKUP,
             action="record the backup",
         )
-        self.backup_path = _require_backup_path(path)
+        if not isinstance(self.probe, ProbeData):
+            raise InvalidTransition("cannot record a backup before probing the device")
+        checked_path = _require_backup_path(path)
+
+        self.backup_path = checked_path
         self.error_message = None
         self.state = SessionState.REVIEW
 
@@ -220,6 +243,7 @@ class SessionController:
         return (
             self.state is SessionState.REVIEW
             and self.backup_path is not None
+            and isinstance(self.probe, ProbeData)
             and bool(self.profile_id)
             and bool(self.selected_packages)
         )
