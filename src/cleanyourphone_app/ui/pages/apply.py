@@ -5,7 +5,9 @@ exactly once when the user clicks Apply, runs the :class:`ApplyController` on a
 ``BackgroundCall`` worker, and keeps every widget update on the UI thread by
 receiving progress through a queued signal. Window close stays blocked while a
 batch is in flight, and a failure shows the packages that are actually still
-disabled instead of claiming the phone is unchanged.
+disabled instead of claiming the phone is unchanged. The controller also takes
+local before/after measurements; they are part of the summary and never gate or
+undo a package write.
 """
 
 from __future__ import annotations

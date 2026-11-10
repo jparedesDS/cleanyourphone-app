@@ -13,6 +13,24 @@ from cleanyourphone_app.services.cli import CliResult
 
 BACKUP = Path("C:/backup/20260101_120000")
 PASS_CHECKS = [{"check": "Device", "status": "PASS", "detail": "Pixel 8"}]
+BENCH_ROWS = [
+    {
+        "metric": "ram_available_mb",
+        "label": "RAM available (MB)",
+        "before": 1001,
+        "after": 1407,
+        "delta": 406,
+        "pct": 40.6,
+    },
+    {
+        "metric": "packages_enabled",
+        "label": "Packages enabled",
+        "before": 211,
+        "after": 197,
+        "delta": -14,
+        "pct": -6.6,
+    },
+]
 
 
 def row(action: str, package: str) -> PlanRow:
@@ -82,6 +100,11 @@ class FakeApplyCli:
             "online": True,
         }
         self.dns_check_error: Exception | None = None
+        self.bench_snapshot_calls: list[str] = []
+        self.bench_snapshot_errors: dict[str, Exception] = {}
+        self.bench_compare_calls: list[tuple[str, str]] = []
+        self.bench_compare_error: Exception | None = None
+        self.bench_rows = [dict(row) for row in BENCH_ROWS]
 
     def plan(self, profile_id: str) -> PlanData:
         self.plan_calls.append(profile_id)
@@ -145,6 +168,49 @@ class FakeApplyCli:
             raise self.dns_check_error
         return dict(self.dns_check_result)
 
+    def bench_snapshot(self, label: str) -> dict:
+        self.bench_snapshot_calls.append(label)
+        self.calls.append(
+            CliResult(
+                ("--json", "bench", "snapshot", "--label", label), 0, "", ""
+            )
+        )
+        error = self.bench_snapshot_errors.get(label)
+        if error is not None:
+            raise error
+        before = label == "before"
+        return {
+            "path": f"C:/bench/{label}.json",
+            "data": {
+                "timestamp": "2026-11-10 10:00:00",
+                "model": "Google Pixel 8",
+                "android": "14",
+                "build": "AP1A.240505.004",
+                "ram_available_mb": 1001 if before else 1407,
+                "packages_enabled": 211 if before else 197,
+                "processes": 333 if before else 321,
+                "private_dns_mode": "opportunistic" if before else "hostname",
+                "private_dns_specifier": "" if before else "dns.adguard-dns.com",
+            },
+        }
+
+    def bench_compare(self, before, after) -> dict:
+        self.bench_compare_calls.append((str(before), str(after)))
+        self.calls.append(
+            CliResult(
+                ("--json", "bench", "compare", str(before), str(after)),
+                0,
+                "",
+                "",
+            )
+        )
+        if self.bench_compare_error is not None:
+            raise self.bench_compare_error
+        return {
+            "path": "C:/bench/compare-20260101_000000.md",
+            "rows": [dict(row) for row in self.bench_rows],
+        }
+
 
 def test_success_runs_plan_before_each_batch_and_verifies_once_per_batch():
     cli = FakeApplyCli()
@@ -155,7 +221,10 @@ def test_success_runs_plan_before_each_batch_and_verifies_once_per_batch():
     )
 
     assert result.completed is True
-    assert cli.calls[0].args[:4] == ("--json", "plan", "--profile", "pixel-8")
+    first_plan = next(
+        call for call in cli.calls if call.args[:2] == ("--json", "plan")
+    )
+    assert first_plan.args[:4] == ("--json", "plan", "--profile", "pixel-8")
     assert cli.disable_calls == [("a", "b", "c", "d", "e"), ("f",)]
     assert cli.plan_calls == ["pixel-8", "pixel-8"]
     assert cli.verify_calls == 2
@@ -411,8 +480,8 @@ def test_ads_provider_sets_dns_after_the_last_package_batch():
         if call.args[:2] == ("dns", "set")
     )
     assert disable_index < dns_set_index
-    assert cli.calls[-2].args == ("dns", "set", "adguard")
-    assert cli.calls[-1].args == ("--json", "dns", "check")
+    dns_check_index = _call_index(cli, ("--json", "dns", "check"))
+    assert dns_set_index < dns_check_index
 
 
 def test_dns_set_failure_keeps_the_package_success_and_reports_ads_error():
@@ -513,6 +582,148 @@ def test_run_rejects_an_invalid_ads_provider_before_any_write():
         controller.run(("a",), "pixel-8", ads_provider="   ")
 
     assert cli.calls == []
+
+
+def _call_index(cli: FakeApplyCli, args: tuple[str, ...]) -> int:
+    return [call.args for call in cli.calls].index(args)
+
+
+def test_apply_takes_the_before_snapshot_before_the_first_batch():
+    cli = FakeApplyCli()
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8")
+
+    assert result.completed is True
+    assert cli.bench_snapshot_calls == ["before", "after"]
+    assert result.bench_before["path"] == "C:/bench/before.json"
+    assert result.bench_after["path"] == "C:/bench/after.json"
+    assert result.bench_rows == tuple(dict(row) for row in BENCH_ROWS)
+    assert result.bench_error is None
+
+    assert cli.calls[0].args == (
+        "--json",
+        "bench",
+        "snapshot",
+        "--label",
+        "before",
+    )
+    before_index = _call_index(
+        cli, ("--json", "bench", "snapshot", "--label", "before")
+    )
+    first_plan = _call_index(cli, ("--json", "plan", "--profile", "pixel-8"))
+    first_disable = next(
+        index
+        for index, call in enumerate(cli.calls)
+        if call.args and call.args[0] == "disable"
+    )
+    compare_index = _call_index(
+        cli,
+        (
+            "--json",
+            "bench",
+            "compare",
+            "C:/bench/before.json",
+            "C:/bench/after.json",
+        ),
+    )
+    assert before_index < first_plan < first_disable < compare_index
+
+
+def test_apply_takes_the_after_snapshot_and_compares_after_the_ads_step():
+    cli = FakeApplyCli()
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8", ads_provider="adguard")
+
+    assert result.completed is True
+    assert cli.bench_snapshot_calls == ["before", "after"]
+    assert cli.bench_compare_calls == [
+        ("C:/bench/before.json", "C:/bench/after.json")
+    ]
+
+    dns_set_index = _call_index(cli, ("dns", "set", "adguard"))
+    dns_check_index = _call_index(cli, ("--json", "dns", "check"))
+    after_index = _call_index(
+        cli, ("--json", "bench", "snapshot", "--label", "after")
+    )
+    compare_index = _call_index(
+        cli,
+        (
+            "--json",
+            "bench",
+            "compare",
+            "C:/bench/before.json",
+            "C:/bench/after.json",
+        ),
+    )
+    assert dns_set_index < dns_check_index < after_index < compare_index
+
+
+def test_a_bench_snapshot_failure_keeps_the_packages_completed():
+    cli = FakeApplyCli()
+    cli.bench_snapshot_errors["before"] = RuntimeError("bench crashed")
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8")
+
+    assert result.completed is True
+    assert result.failed_batch is None
+    assert result.bench_error == "before"
+    assert result.bench_before is None
+    assert result.bench_after is not None
+    assert cli.bench_snapshot_calls == ["before", "after"]
+    assert cli.bench_compare_calls == []
+    assert cli.disable_calls == [("a", "b")]
+    assert all(
+        not call.args or call.args[0] != "restore" for call in cli.calls
+    )
+
+
+def test_a_bench_after_failure_keeps_the_packages_completed():
+    cli = FakeApplyCli()
+    cli.bench_snapshot_errors["after"] = RuntimeError("bench crashed")
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8")
+
+    assert result.completed is True
+    assert result.bench_error == "after"
+    assert result.bench_before is not None
+    assert result.bench_after is None
+    assert result.bench_rows == ()
+    assert cli.bench_compare_calls == []
+    assert cli.disable_calls == [("a", "b")]
+    assert all(
+        not call.args or call.args[0] != "restore" for call in cli.calls
+    )
+
+
+def test_a_bench_compare_failure_keeps_the_snapshots_and_the_packages():
+    cli = FakeApplyCli()
+    cli.bench_compare_error = RuntimeError("compare crashed")
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8")
+
+    assert result.completed is True
+    assert result.bench_error == "compare"
+    assert result.bench_before is not None
+    assert result.bench_after is not None
+    assert result.bench_rows == ()
+    assert cli.disable_calls == [("a", "b")]
+
+
+def test_a_failed_batch_never_takes_an_after_snapshot():
+    cli = FakeApplyCli()
+    cli.disable_results = [1]
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8")
+
+    assert result.completed is False
+    assert cli.bench_snapshot_calls == ["before"]
+    assert cli.bench_compare_calls == []
 
 
 def test_apply_result_is_frozen():

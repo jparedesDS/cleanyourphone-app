@@ -43,6 +43,31 @@ def _result_ok(result: object) -> bool:
     return bool(getattr(result, "ok", False))
 
 
+def _snapshot_data(snapshot: object) -> dict:
+    """Return the data object of a benchmark snapshot, or an empty mapping."""
+    if not isinstance(snapshot, dict):
+        return {}
+    data = snapshot.get("data")
+    return data if isinstance(data, dict) else {}
+
+
+def _number_text(value: object) -> str | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return f"{value:g}"
+
+
+def _dns_text(data: dict) -> str:
+    mode = data.get("private_dns_mode")
+    specifier = data.get("private_dns_specifier")
+    parts = [
+        part.strip()
+        for part in (mode, specifier)
+        if isinstance(part, str) and part.strip()
+    ]
+    return " ".join(parts)
+
+
 class DonePage(Page):
     """Summary, confirmation and the explicit backup fallback."""
 
@@ -120,6 +145,56 @@ class DonePage(Page):
         self.ads_caveat_label.setProperty("role", "muted")
         self.ads_caveat_label.setWordWrap(True)
         self.ads_caveat_label.hide()
+
+        self.bench_card = QFrame(self)
+        self.bench_card.setObjectName("BenchResults")
+        bench_layout = QVBoxLayout(self.bench_card)
+        bench_layout.setContentsMargins(16, 14, 16, 14)
+        bench_layout.setSpacing(4)
+
+        self.bench_title_label = QLabel(self.bench_card)
+        self.bench_title_label.setObjectName("done_bench_title")
+        self.bench_title_label.setProperty("role", "brand")
+        self.bench_title_label.setWordWrap(True)
+
+        self.bench_ram_label = QLabel(self.bench_card)
+        self.bench_ram_label.setObjectName("done_bench_ram")
+        self.bench_ram_label.setProperty("role", "body")
+        self.bench_ram_label.setWordWrap(True)
+
+        self.bench_packages_label = QLabel(self.bench_card)
+        self.bench_packages_label.setObjectName("done_bench_packages")
+        self.bench_packages_label.setProperty("role", "body")
+        self.bench_packages_label.setWordWrap(True)
+
+        self.bench_processes_label = QLabel(self.bench_card)
+        self.bench_processes_label.setObjectName("done_bench_processes")
+        self.bench_processes_label.setProperty("role", "body")
+        self.bench_processes_label.setWordWrap(True)
+
+        self.bench_dns_label = QLabel(self.bench_card)
+        self.bench_dns_label.setObjectName("done_bench_dns")
+        self.bench_dns_label.setProperty("role", "body")
+        self.bench_dns_label.setWordWrap(True)
+
+        self.bench_error_label = QLabel(self.bench_card)
+        self.bench_error_label.setObjectName("done_bench_error")
+        self.bench_error_label.setProperty("role", "error")
+        self.bench_error_label.setWordWrap(True)
+
+        self.bench_caveat_label = QLabel(self.bench_card)
+        self.bench_caveat_label.setObjectName("done_bench_caveat")
+        self.bench_caveat_label.setProperty("role", "muted")
+        self.bench_caveat_label.setWordWrap(True)
+
+        bench_layout.addWidget(self.bench_title_label)
+        bench_layout.addWidget(self.bench_ram_label)
+        bench_layout.addWidget(self.bench_packages_label)
+        bench_layout.addWidget(self.bench_processes_label)
+        bench_layout.addWidget(self.bench_dns_label)
+        bench_layout.addWidget(self.bench_error_label)
+        bench_layout.addWidget(self.bench_caveat_label)
+        self.bench_card.hide()
 
         self.summary_warning_label = QLabel(self)
         self.summary_warning_label.setObjectName("done_summary_warning")
@@ -248,6 +323,7 @@ class DonePage(Page):
         layout.addWidget(self.status_label)
         layout.addWidget(self.ads_label)
         layout.addWidget(self.ads_caveat_label)
+        layout.addWidget(self.bench_card)
         layout.addWidget(self.summary_warning_label)
         layout.addWidget(self.error_label)
         layout.addWidget(self.remaining_caption)
@@ -293,6 +369,7 @@ class DonePage(Page):
         )
         self._render_backup()
         self._render_ads(result)
+        self._render_bench(result)
 
         if self._undo_done:
             # The present-tense summary no longer describes the phone: undo
@@ -307,6 +384,7 @@ class DonePage(Page):
             self.remaining_caption.hide()
             self.remaining_label.hide()
             self._hide_ads()
+            self._hide_bench()
             return
 
         failed = result.failed_batch is not None
@@ -419,6 +497,80 @@ class DonePage(Page):
     def _hide_ads(self) -> None:
         self.ads_label.hide()
         self.ads_caveat_label.hide()
+
+    def _render_bench(self, result: ApplyResult) -> None:
+        """Show local before/after values; never turn a failed measure into data."""
+        if result.bench_error:
+            self.bench_card.show()
+            self.bench_title_label.setText(self.tr("done.bench_title"))
+            self.bench_error_label.setText(self.tr("done.bench_failed"))
+            self.bench_error_label.show()
+            for label in (
+                self.bench_ram_label,
+                self.bench_packages_label,
+                self.bench_processes_label,
+                self.bench_dns_label,
+                self.bench_caveat_label,
+            ):
+                label.hide()
+            return
+
+        before = _snapshot_data(result.bench_before)
+        after = _snapshot_data(result.bench_after)
+        if not before and not after:
+            self._hide_bench()
+            return
+
+        unknown = self.tr("done.bench_unknown")
+
+        def pair(key: str) -> str:
+            old = _number_text(before.get(key)) or unknown
+            new = _number_text(after.get(key)) or unknown
+            return f"{old} → {new}"
+
+        before_dns = _dns_text(before) or unknown
+        after_dns = _dns_text(after) or unknown
+        dns_value = (
+            after_dns if before_dns == after_dns else f"{before_dns} → {after_dns}"
+        )
+
+        self.bench_card.show()
+        self.bench_title_label.setText(self.tr("done.bench_title"))
+        self.bench_ram_label.setText(
+            self.tr("done.bench_ram", value=pair("ram_available_mb"))
+        )
+        self.bench_packages_label.setText(
+            self.tr("done.bench_packages", value=pair("packages_enabled"))
+        )
+        self.bench_processes_label.setText(
+            self.tr("done.bench_processes", value=pair("processes"))
+        )
+        self.bench_dns_label.setText(
+            self.tr("done.bench_dns", value=dns_value)
+        )
+        self.bench_caveat_label.setText(self.tr("done.bench_caveat"))
+        self.bench_error_label.hide()
+        for label in (
+            self.bench_ram_label,
+            self.bench_packages_label,
+            self.bench_processes_label,
+            self.bench_dns_label,
+            self.bench_caveat_label,
+        ):
+            label.show()
+
+    def _hide_bench(self) -> None:
+        self.bench_card.hide()
+        for label in (
+            self.bench_title_label,
+            self.bench_ram_label,
+            self.bench_packages_label,
+            self.bench_processes_label,
+            self.bench_dns_label,
+            self.bench_error_label,
+            self.bench_caveat_label,
+        ):
+            label.hide()
 
     # ------------------------------------------------------------------- undo
 
@@ -591,6 +743,7 @@ class DonePage(Page):
         self.status_label.hide()
         self.summary_warning_label.hide()
         self._hide_ads()
+        self._hide_bench()
         self.verified_label.hide()
         self.backup_caption.hide()
         self.backup_label.clear()
@@ -612,6 +765,9 @@ class DonePage(Page):
         self.fallback_warning_label.setText(self.tr("done.fallback_warning"))
         self.fallback_button.setText(self.tr("done.restore_from_backup"))
         self.remaining_caption.setText(self.tr("done.remaining_caption"))
+        self.bench_title_label.setText(self.tr("done.bench_title"))
+        self.bench_error_label.setText(self.tr("done.bench_failed"))
+        self.bench_caveat_label.setText(self.tr("done.bench_caveat"))
         if self._error_key is not None:
             self.error_label.setText(self.tr(self._error_key))
         if self.summary is not None:
@@ -622,6 +778,21 @@ class DonePage(Page):
         self.count_label.setAccessibleName(self.count_label.text())
         self.ads_label.setAccessibleName(self.ads_label.text())
         self.ads_caveat_label.setAccessibleName(self.ads_caveat_label.text())
+        self.bench_title_label.setAccessibleName(self.bench_title_label.text())
+        self.bench_ram_label.setAccessibleName(self.bench_ram_label.text())
+        self.bench_packages_label.setAccessibleName(
+            self.bench_packages_label.text()
+        )
+        self.bench_processes_label.setAccessibleName(
+            self.bench_processes_label.text()
+        )
+        self.bench_dns_label.setAccessibleName(self.bench_dns_label.text())
+        self.bench_error_label.setAccessibleName(
+            self.bench_error_label.text()
+        )
+        self.bench_caveat_label.setAccessibleName(
+            self.bench_caveat_label.text()
+        )
         self.undo_button.setAccessibleName(self.undo_button.text())
         self.confirm_button.setAccessibleName(self.confirm_button.text())
         self.cancel_button.setAccessibleName(self.cancel_button.text())

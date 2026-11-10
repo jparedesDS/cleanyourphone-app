@@ -6,8 +6,11 @@ sent to ``disable``, verifies the phone after every successful batch, and on a
 failure reports the packages that are still disabled instead of claiming the
 phone is unchanged. After every package batch succeeds it can optionally set a
 private DNS preset; a DNS failure is reported on its own and never undoes a
-disabled package. Undo always previews with ``restore --dry-run`` first and
-never retries a failed restore on its own.
+disabled package. It also takes a local benchmark snapshot before the first
+batch and another one after the last batch and the optional DNS step, then
+compares them; a benchmark failure is reported on its own and never changes the
+package outcome. Undo always previews with ``restore --dry-run`` first and never
+retries a failed restore on its own.
 """
 
 from __future__ import annotations
@@ -36,6 +39,10 @@ class ApplyResult:
     ads_provider: str | None = None
     ads_check: dict | None = None
     ads_error: str | None = None
+    bench_before: dict | None = None
+    bench_after: dict | None = None
+    bench_rows: tuple[dict, ...] = ()
+    bench_error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -161,6 +168,16 @@ class ApplyController:
             raise ValueError("profile_id must be a non-empty string")
         requested_ads = _ads_provider(ads_provider)
 
+        bench_before: dict | None = None
+        bench_error: str | None = None
+        try:
+            bench_before = self._bench_snapshot("before")
+        except Exception as error:  # noqa: BLE001 - a measurement is not a write
+            logging.getLogger(LOGGER_NAME).warning(
+                "apply bench before failed: %s", type(error).__name__
+            )
+            bench_error = "before"
+
         batches = split_batches(packages, self._batch_size)
         total = len(batches)
         applied: list[str] = []
@@ -257,6 +274,10 @@ class ApplyController:
 
         ads_provider, ads_check, ads_error = self._configure_ads(requested_ads)
 
+        bench_after, bench_rows, measure_error = self._measure_after(bench_before)
+        if bench_error is None:
+            bench_error = measure_error
+
         return ApplyResult(
             completed=True,
             failed_batch=None,
@@ -266,6 +287,10 @@ class ApplyController:
             ads_provider=ads_provider,
             ads_check=ads_check,
             ads_error=ads_error,
+            bench_before=bench_before,
+            bench_after=bench_after,
+            bench_rows=bench_rows,
+            bench_error=bench_error,
         )
 
     # ------------------------------------------------------------------- undo
@@ -312,6 +337,56 @@ class ApplyController:
         return UndoResult(restored=True, used_backup=True)
 
     # ---------------------------------------------------------------- helpers
+
+    def _bench_snapshot(self, label: str) -> dict:
+        """Take one local snapshot and validate the shape the UI relies on."""
+        snapshot = self._cli.bench_snapshot(label)
+        if not isinstance(snapshot, dict):
+            raise TypeError("bench snapshot must be a dict")
+        path = snapshot.get("path")
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError("bench snapshot path must be a non-empty string")
+        if not isinstance(snapshot.get("data"), dict):
+            raise TypeError("bench snapshot data must be a dict")
+        return snapshot
+
+    def _measure_after(
+        self, bench_before: dict | None
+    ) -> tuple[dict | None, tuple[dict, ...], str | None]:
+        """Take the after snapshot, then compare it when a before exists.
+
+        Every failure is returned as a stage code. The caller keeps the package
+        result intact and only records ``bench_error``.
+        """
+        try:
+            bench_after = self._bench_snapshot("after")
+        except Exception as error:  # noqa: BLE001 - a measurement is not a write
+            logging.getLogger(LOGGER_NAME).warning(
+                "apply bench after failed: %s", type(error).__name__
+            )
+            return None, (), "after"
+
+        if bench_before is None:
+            return bench_after, (), None
+
+        try:
+            comparison = self._cli.bench_compare(
+                bench_before["path"], bench_after["path"]
+            )
+            if not isinstance(comparison, dict):
+                raise TypeError("bench comparison must be a dict")
+            rows = comparison.get("rows")
+            if not isinstance(rows, list):
+                raise TypeError("bench comparison rows must be a list")
+            if not all(isinstance(row, dict) for row in rows):
+                raise TypeError("bench comparison rows must be dicts")
+        except Exception as error:  # noqa: BLE001 - a measurement is not a write
+            logging.getLogger(LOGGER_NAME).warning(
+                "apply bench compare failed: %s", type(error).__name__
+            )
+            return bench_after, (), "compare"
+
+        return bench_after, tuple(rows), None
 
     def _configure_ads(
         self, provider: str | None

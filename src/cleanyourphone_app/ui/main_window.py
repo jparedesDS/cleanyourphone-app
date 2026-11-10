@@ -413,6 +413,7 @@ class MainWindow(QMainWindow):
                 reset()
 
     def _present_done(self, summary: object) -> None:
+        """Show the summary; the benchmark result travels inside it."""
         if not isinstance(summary, ApplySummary) or self.done_page is None:
             return
         self.done_page.show_summary(summary)

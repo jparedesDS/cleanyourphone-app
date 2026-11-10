@@ -27,6 +27,49 @@ SERIAL = "usb-1"
 FINGERPRINT = "google/shiba/shiba:14/AP1A.240505.004/11228896:user/release-keys"
 BACKUP = Path("C:/backup/20260101_120000")
 PASS_CHECKS = [{"check": "Device", "status": "PASS", "detail": "Pixel 8"}]
+BENCH_ROWS = (
+    {
+        "metric": "ram_available_mb",
+        "label": "RAM available (MB)",
+        "before": 1001,
+        "after": 1407,
+        "delta": 406,
+        "pct": 40.6,
+    },
+    {
+        "metric": "packages_enabled",
+        "label": "Packages enabled",
+        "before": 211,
+        "after": 197,
+        "delta": -14,
+        "pct": -6.6,
+    },
+)
+
+
+def bench_snapshot(
+    label: str,
+    *,
+    ram: int = 1001,
+    packages: int = 211,
+    processes: int = 333,
+    dns_mode: str = "opportunistic",
+    dns_specifier: str = "",
+) -> dict:
+    return {
+        "path": f"C:/bench/{label}.json",
+        "data": {
+            "timestamp": "2026-11-10 10:00:00",
+            "model": "Google Pixel 8",
+            "android": "14",
+            "build": "AP1A.240505.004",
+            "ram_available_mb": ram,
+            "packages_enabled": packages,
+            "processes": processes,
+            "private_dns_mode": dns_mode,
+            "private_dns_specifier": dns_specifier,
+        },
+    }
 
 
 def probe() -> ProbeData:
@@ -213,6 +256,10 @@ class FakeAdsFlowCli:
             "control_state": "ok",
             "online": True,
         }
+        self.bench_snapshot_calls: list[str] = []
+        self.bench_errors: dict[str, Exception] = {}
+        self.bench_compare_calls: list[tuple[str, str]] = []
+        self.bench_compare_error: Exception | None = None
 
     def plan(self, profile_id: str) -> PlanData:
         self.events.append("plan")
@@ -250,6 +297,40 @@ class FakeAdsFlowCli:
         self.events.append("dns_check")
         return dict(self.dns_check_result)
 
+    def bench_snapshot(self, label: str) -> dict:
+        self.bench_snapshot_calls.append(label)
+        self.events.append("bench_snapshot:" + label)
+        error = self.bench_errors.get(label)
+        if error is not None:
+            raise error
+        if label == "before":
+            return bench_snapshot(
+                "before",
+                ram=1001,
+                packages=211,
+                processes=333,
+                dns_mode="opportunistic",
+                dns_specifier="",
+            )
+        return bench_snapshot(
+            "after",
+            ram=1407,
+            packages=197,
+            processes=321,
+            dns_mode="hostname",
+            dns_specifier="dns.adguard-dns.com",
+        )
+
+    def bench_compare(self, before, after) -> dict:
+        self.bench_compare_calls.append((str(before), str(after)))
+        self.events.append("bench_compare")
+        if self.bench_compare_error is not None:
+            raise self.bench_compare_error
+        return {
+            "path": "C:/bench/compare-20260101_000000.md",
+            "rows": [dict(row) for row in BENCH_ROWS],
+        }
+
 
 def make_summary(
     *,
@@ -263,6 +344,10 @@ def make_summary(
     ads_provider=None,
     ads_check=None,
     ads_error=None,
+    bench_before=None,
+    bench_after=None,
+    bench_rows=(),
+    bench_error=None,
 ) -> ApplySummary:
     selected = tuple(selected) if selected is not None else tuple(applied)
     result = ApplyResult(
@@ -274,6 +359,10 @@ def make_summary(
         ads_provider=ads_provider,
         ads_check=ads_check,
         ads_error=ads_error,
+        bench_before=bench_before,
+        bench_after=bench_after,
+        bench_rows=tuple(bench_rows),
+        bench_error=bench_error,
     )
     return ApplySummary(
         result=result,
@@ -566,6 +655,80 @@ def test_apply_without_ads_never_calls_dns(qtbot):
     assert page.last_summary.result.ads_provider is None
 
 
+def test_apply_records_before_and_after_and_done_shows_them(qtbot):
+    selected = ("com.example.a", "com.example.b")
+    context = review_context(selected)
+    cli = FakeAdsFlowCli(selected)
+    page = ApplyPage(context, controller=ApplyController(cli, backup=BACKUP))
+    qtbot.addWidget(page)
+    page.show()
+
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    assert cli.events[0] == "bench_snapshot:before"
+    assert cli.events.index("bench_snapshot:before") < cli.events.index("plan")
+    assert cli.events.index("bench_snapshot:after") > cli.events.index("verify")
+    assert cli.events.index("bench_compare") > cli.events.index(
+        "bench_snapshot:after"
+    )
+
+    summary = page.last_summary
+    assert summary is not None
+    assert summary.result.bench_error is None
+    assert summary.result.bench_before["path"] == "C:/bench/before.json"
+    assert summary.result.bench_after["path"] == "C:/bench/after.json"
+    assert summary.result.bench_rows[0]["metric"] == "ram_available_mb"
+
+    done = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(done)
+    done.show_summary(summary)
+    done.show()
+
+    assert done.bench_card.isVisibleTo(done) is True
+    assert done.bench_title_label.text() == "Resultados"
+    assert "1001" in done.bench_ram_label.text()
+    assert "1407" in done.bench_ram_label.text()
+    assert "211" in done.bench_packages_label.text()
+    assert "197" in done.bench_packages_label.text()
+    assert "333" in done.bench_processes_label.text()
+    assert "321" in done.bench_processes_label.text()
+    assert "dns.adguard-dns.com" in done.bench_dns_label.text()
+    assert "aproximado" in done.bench_caveat_label.text()
+    assert "no causal" in done.bench_caveat_label.text()
+
+
+def test_bench_failure_still_reaches_done_and_says_it_could_not_measure(qtbot):
+    selected = ("com.example.a", "com.example.b")
+    context = review_context(selected)
+    cli = FakeAdsFlowCli(selected)
+    cli.bench_errors["after"] = RuntimeError("bench crashed")
+    page = ApplyPage(context, controller=ApplyController(cli, backup=BACKUP))
+    qtbot.addWidget(page)
+    page.show()
+
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    summary = page.last_summary
+    assert summary is not None
+    assert summary.result.completed is True
+    assert summary.result.bench_error == "after"
+    assert cli.disable_calls == [selected]
+
+    done = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(done)
+    done.show_summary(summary)
+    done.show()
+
+    assert done.count_label.text() == "2 apps desactivadas"
+    assert done.bench_card.isVisibleTo(done) is True
+    assert done.bench_error_label.isVisibleTo(done) is True
+    assert done.bench_error_label.text() == "No se pudo medir"
+    assert done.bench_ram_label.isHidden() is True
+    assert done.bench_caveat_label.isHidden() is True
+
+
 def test_done_shows_an_offline_ads_check_as_not_verified(qtbot):
     context = review_context()
     page = DonePage(context, controller=FakeUndoController())
@@ -603,6 +766,87 @@ def test_done_hides_the_ads_status_when_ads_were_off(qtbot):
 
     assert page.ads_label.isHidden() is True
     assert page.ads_caveat_label.isHidden() is True
+
+
+def test_done_shows_the_results_card_with_the_before_and_after_values(qtbot):
+    context = review_context()
+    page = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(page)
+    page.show_summary(
+        make_summary(
+            applied=("com.example.a",),
+            bench_before=bench_snapshot(
+                "before",
+                ram=1001,
+                packages=211,
+                processes=333,
+                dns_mode="opportunistic",
+                dns_specifier="",
+            ),
+            bench_after=bench_snapshot(
+                "after",
+                ram=1407,
+                packages=197,
+                processes=321,
+                dns_mode="hostname",
+                dns_specifier="dns.adguard-dns.com",
+            ),
+            bench_rows=BENCH_ROWS,
+        )
+    )
+    page.show()
+
+    assert page.bench_card.isVisibleTo(page) is True
+    assert page.bench_title_label.text() == "Resultados"
+    assert "RAM" in page.bench_ram_label.text()
+    assert "1001" in page.bench_ram_label.text()
+    assert "1407" in page.bench_ram_label.text()
+    assert "211" in page.bench_packages_label.text()
+    assert "197" in page.bench_packages_label.text()
+    assert "333" in page.bench_processes_label.text()
+    assert "321" in page.bench_processes_label.text()
+    assert "DNS privado" in page.bench_dns_label.text()
+    assert "dns.adguard-dns.com" in page.bench_dns_label.text()
+    assert page.bench_caveat_label.isVisibleTo(page) is True
+    assert "Medido en este móvil" in page.bench_caveat_label.text()
+    assert "aproximado" in page.bench_caveat_label.text()
+    assert "no causal" in page.bench_caveat_label.text()
+    assert page.bench_error_label.isHidden() is True
+
+
+def test_done_says_the_measurement_failed_without_hiding_the_package_result(qtbot):
+    context = review_context()
+    page = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(page)
+    page.show_summary(
+        make_summary(
+            applied=("com.example.a", "com.example.b"),
+            bench_before=bench_snapshot("before"),
+            bench_after=bench_snapshot("after"),
+            bench_error="compare",
+        )
+    )
+    page.show()
+
+    assert page.count_label.text() == "2 apps desactivadas"
+    assert page.bench_card.isVisibleTo(page) is True
+    assert page.bench_error_label.isVisibleTo(page) is True
+    assert page.bench_error_label.text() == "No se pudo medir"
+    assert page.bench_ram_label.isHidden() is True
+    assert page.bench_packages_label.isHidden() is True
+    assert page.bench_processes_label.isHidden() is True
+    assert page.bench_dns_label.isHidden() is True
+    assert page.bench_caveat_label.isHidden() is True
+
+
+def test_done_hides_the_results_card_when_no_benchmark_was_taken(qtbot):
+    context = review_context()
+    page = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(page)
+    page.show_summary(make_summary())
+    page.show()
+
+    assert page.bench_card.isHidden() is True
 
 
 def test_done_shows_the_count_the_backup_path_and_undo(qtbot):
@@ -806,6 +1050,38 @@ def test_main_window_registers_apply_and_done_and_blocks_close(qtbot):
 
     assert window.done_page.count_label.text() == "3 apps desactivadas"
     assert window.close() is True
+
+
+def test_main_window_shows_the_benchmark_results_on_done(qtbot):
+    selected = ("com.example.a", "com.example.b")
+    context = AppContext.fake(
+        translator=Translator("es"),
+        adb_info=make_info(),
+        device_lister=lambda _info: [],
+    )
+    window = MainWindow(context)
+    qtbot.addWidget(window)
+    window.show()
+    window.start_flow()
+
+    context.session.attach(SERIAL, Transport.USB)
+    context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.checked(probe(), "pixel-8")
+    context.session.backup_done(BACKUP)
+    context.session.set_selection(selected)
+    window.show_page("apply")
+
+    cli = FakeAdsFlowCli(selected)
+    window.apply_page._controller = ApplyController(cli, backup=BACKUP)
+    window.apply_page.apply_button.click()
+    qtbot.waitUntil(lambda: window.current_page_name == "done", timeout=3000)
+
+    done = window.done_page
+    assert done.bench_card.isVisibleTo(done) is True
+    assert done.bench_title_label.text() == "Resultados"
+    assert "1001" in done.bench_ram_label.text()
+    assert "1407" in done.bench_ram_label.text()
+    assert "dns.adguard-dns.com" in done.bench_dns_label.text()
 
 
 def test_preview_failure_keeps_the_failed_summary_and_scoped_copy(qtbot):

@@ -13,4 +13,4 @@ CLI = os.environ.get("CLEANYOURPHONE_CLI")
 )
 def test_frozen_sidecar_reports_the_pinned_version():
     client = CliClient([CLI])
-    assert client.version() == "CleanYourPhone 0.2.2"
+    assert client.version() == "CleanYourPhone 0.3.0"
