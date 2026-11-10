@@ -1,6 +1,7 @@
 # CleanYourPhone app
 
-**Status: early MVP. There is no public release yet, but the Windows installer can be built from source.**
+**Status: early MVP. The Windows installer `v0.1.0` is published and was tested end to end on a
+OnePlus 6T (Android 11).**
 
 This repository holds the optional local app for people who prefer buttons over prompts:
 pick a profile, review every package, apply in small batches, and restore from the undo journal.
@@ -13,8 +14,13 @@ The CLI lives in that repository too.
 
 ## Release status
 
-- The Windows installer is built from source and published with the first release.
-- No public build or release exists yet.
+- `v0.1.0` publishes the Windows 10/11 x64 installer:
+  [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest).
+- Tested on a OnePlus 6T: connect, check, backup, review, disable one package, verify and undo.
+- The app only continues on an exact `device` profile with a tested build. On any other phone it
+  stops and links to the skill. This is deliberate.
+- The build is not code-signed. Verify the SHA-256 before running it.
+- The skill remains the main product; the app is the optional path.
 
 ## Build the Windows app and installer
 
@@ -38,14 +44,26 @@ real-sidecar contract test.
 
 ## Install 0.1.0
 
-Run `dist/CleanYourPhone-Setup-0.1.0.exe`. It installs for the current user in
-`%LOCALAPPDATA%\Programs\CleanYourPhone`, creates a Start Menu shortcut, and does
-not require administrator rights.
+Download `CleanYourPhone-Setup-0.1.0.exe` from
+[releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), or run the
+local build at `dist/CleanYourPhone-Setup-0.1.0.exe`.
+
+SHA-256 of the published `v0.1.0` installer:
+
+```text
+48A74C2C9B6FF9000D476B897718EE36319569E3EC5CCAEFFDB3E3EFC533893A
+```
+
+It installs for the current user in `%LOCALAPPDATA%\Programs\CleanYourPhone`, creates a Start Menu
+shortcut, and does not require administrator rights.
 
 The 0.1.0 build is not code-signed. Windows SmartScreen may show
 "Windows protected your PC" on first launch. Choose **More info** and then
-**Run anyway** only after verifying the download source. Do not disable
+**Run anyway** only after verifying the download and the SHA-256. Do not disable
 SmartScreen.
+
+If this is your first time using ADB, follow the
+[connection guide](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md).
 
 Uninstalling removes the app files and shortcuts. It intentionally leaves your
 data in `%USERPROFILE%\.cleanyourphone` (state and phone backups) and
