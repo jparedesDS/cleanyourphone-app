@@ -13,6 +13,7 @@ from typing import Any
 from PySide6.QtCore import QLocale
 from PySide6.QtWidgets import QApplication
 
+from cleanyourphone_app.domain.models import ProbeData
 from cleanyourphone_app.domain.session import SessionController
 from cleanyourphone_app.i18n.packages import PackageCatalog, default_package_catalog
 from cleanyourphone_app.i18n.translator import Translator
@@ -102,6 +103,7 @@ class AppContext:
     adb_path: str | None = None
     adb_info: AdbInfo | None = None
     device_lister: DeviceLister = list_devices
+    last_probe: ProbeData | None = None
 
     def __post_init__(self) -> None:
         if not self.adb_path:

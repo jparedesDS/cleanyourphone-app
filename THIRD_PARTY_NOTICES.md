@@ -1,7 +1,7 @@
 # Third-party notices
 
-CleanYourPhone 0.1.0 is built from several open-source components. This file is
-installed next to the application by `CleanYourPhone-Setup-0.1.0.exe` and is
+CleanYourPhone 0.2.0 is built from several open-source components. This file is
+installed next to the application by `CleanYourPhone-Setup-0.2.0.exe` and is
 also present in the source repository.
 
 ## CleanYourPhone app

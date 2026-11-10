@@ -30,6 +30,7 @@ from cleanyourphone_app.domain.apply import ApplySummary
 from cleanyourphone_app.domain.session import SessionError
 from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
 from cleanyourphone_app.services.logging import LOGGER_NAME
+from cleanyourphone_app.ui.dialogs import FeedbackDialog
 from cleanyourphone_app.ui.pages.apply import ApplyPage
 from cleanyourphone_app.ui.pages.backup import BackupPage
 from cleanyourphone_app.ui.pages.blocked import SAFETY_DOCS_URL, BlockedPage
@@ -212,9 +213,17 @@ class MainWindow(QMainWindow):
             self.language_buttons[code] = button
             switch_layout.addWidget(button)
 
+        self.feedback_button = QPushButton(header)
+        self.feedback_button.setObjectName("feedback_button")
+        self.feedback_button.setProperty("role", "language")
+        self.feedback_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.feedback_button.setAutoDefault(False)
+        self.feedback_button.clicked.connect(self._open_feedback)
+
         header_layout.addWidget(self.logo_label)
         header_layout.addLayout(brand_layout)
         header_layout.addStretch(1)
+        header_layout.addWidget(self.feedback_button)
         header_layout.addWidget(self.language_switch)
         root_layout.addWidget(header)
 
@@ -292,6 +301,11 @@ class MainWindow(QMainWindow):
             return
         self.connect_page.select_tab(mode)
         self.show_page("connect")
+
+    def _open_feedback(self, checked: bool = False) -> None:
+        """Open the opt-in feedback form; nothing is sent until Send."""
+        dialog = FeedbackDialog(self.context, self)
+        dialog.exec()
 
     def start_flow(self) -> str:
         """Choose setup, check or welcome from the ADB and device state.
@@ -487,6 +501,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(tr("app.name"))
         self.app_name_label.setText(tr("app.name"))
         self.tagline_label.setText(tr("app.tagline"))
+        self.feedback_button.setText(tr("feedback.open"))
+        self.feedback_button.setAccessibleName(tr("feedback.open"))
         self.language_label.setText(tr("common.language"))
         self.language_switch.setAccessibleName(tr("common.language"))
 

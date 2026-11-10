@@ -1,6 +1,6 @@
 # CleanYourPhone app
 
-**Status: early MVP. The Windows installer `v0.1.0` is published and was tested end to end on a
+**Status: early MVP. The Windows installer `v0.2.0` is published and was tested end to end on a
 OnePlus 6T (Android 11).**
 
 This repository holds the optional local app for people who prefer buttons over prompts:
@@ -14,7 +14,7 @@ The CLI lives in that repository too.
 
 ## Release status
 
-- `v0.1.0` publishes the Windows 10/11 x64 installer:
+- `v0.2.0` publishes the Windows 10/11 x64 installer:
   [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest).
 - Tested on a OnePlus 6T: connect, check, backup, review, disable one package, verify and undo.
 - The app only continues on an exact `device` profile with a tested build. On any other phone it
@@ -36,28 +36,28 @@ stages its 156 profiles, freezes the Qt app, and compiles the per-user installer
 Outputs:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (portable onedir app)
-- `dist/CleanYourPhone-Setup-0.1.0.exe` (installer)
+- `dist/CleanYourPhone-Setup-0.2.0.exe` (installer)
 
 The build smoke-tests both executables. Set `CLEANYOURPHONE_CLI` to the frozen
 sidecar and run `python -m pytest tests/test_cli_contract.py` to include the
 real-sidecar contract test.
 
-## Install 0.1.0
+## Install 0.2.0
 
-Download `CleanYourPhone-Setup-0.1.0.exe` from
+Download `CleanYourPhone-Setup-0.2.0.exe` from
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), or run the
-local build at `dist/CleanYourPhone-Setup-0.1.0.exe`.
+local build at `dist/CleanYourPhone-Setup-0.2.0.exe`.
 
-SHA-256 of the published `v0.1.0` installer:
+SHA-256 of the published `v0.2.0` installer:
 
 ```text
-48A74C2C9B6FF9000D476B897718EE36319569E3EC5CCAEFFDB3E3EFC533893A
+B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
 ```
 
 It installs for the current user in `%LOCALAPPDATA%\Programs\CleanYourPhone`, creates a Start Menu
 shortcut, and does not require administrator rights.
 
-The 0.1.0 build is not code-signed. Windows SmartScreen may show
+The 0.2.0 build is not code-signed. Windows SmartScreen may show
 "Windows protected your PC" on first launch. Choose **More info** and then
 **Run anyway** only after verifying the download and the SHA-256. Do not disable
 SmartScreen.

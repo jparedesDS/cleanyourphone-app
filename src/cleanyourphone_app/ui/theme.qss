@@ -1,4 +1,4 @@
-/* CleanYourPhone 0.1.0 — website palette:
+/* CleanYourPhone 0.2.0 — website palette:
    graphite #121316, panel #1B1C21, text #F3F1EC,
    purple #A78BFA, muted #A19E96. */
 
@@ -121,6 +121,10 @@ QFrame#StepBar {
 
 QWidget#LanguageSwitch {
     background-color: transparent;
+}
+
+QWidget#FeedbackFooter {
+    background-color: #121316;
 }
 
 QWidget#review_content {

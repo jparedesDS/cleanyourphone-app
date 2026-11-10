@@ -240,6 +240,7 @@ class CheckPage(Page):
             return
 
         self._probe = result
+        self.context.last_probe = result
         self._show_probe_details(result)
         decision = decide_support(result)
         if not decision.allowed:

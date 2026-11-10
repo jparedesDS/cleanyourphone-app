@@ -127,6 +127,7 @@ def test_supported_phone_advances_to_backup(qtbot, fake_cli, fake_context):
     assert fake_context.session.serial == USB_DEVICE.serial
     assert fake_context.session.transport is Transport.USB
     assert fake_context.session.probe is fake_cli.probe_result
+    assert fake_context.last_probe is fake_cli.probe_result
     assert fake_context.session.verification == "device"
     assert page.next_page == "backup"
 
