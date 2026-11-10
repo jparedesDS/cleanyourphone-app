@@ -31,6 +31,12 @@ _CONNECT_SERVICE = "_adb-tls-connect._tcp"
 _CODE_PATTERN = re.compile(r"[0-9]{6}\Z")
 _CODE_PLACEHOLDER = "<pairing-code>"
 _FAILURE_MARKERS = ("failed", "cannot", "unable", "error", "refused")
+_PHONE_NOT_ONLINE = (
+    "ADB paired and tried to connect, but the phone did not appear as an "
+    "online device. On the phone, keep the Wireless debugging screen open "
+    "and approve any prompt, then try again; you can also connect with a "
+    "USB cable instead."
+)
 
 _MDNS_TIMEOUT = 15
 _PAIR_TIMEOUT = 60
@@ -295,12 +301,7 @@ class WifiConnector:
             if device.state == "device"
         ]
         if not usable:
-            raise WifiError(
-                "ADB paired and tried to connect, but the phone did not appear "
-                "as an online device. On the phone, keep the Wireless debugging "
-                "screen open and approve any prompt, then try again; you can "
-                "also connect with a USB cable instead."
-            )
+            raise WifiError(_PHONE_NOT_ONLINE)
 
         exact = [device for device in usable if device.serial == str(connect)]
         if exact:
@@ -309,8 +310,10 @@ class WifiConnector:
         wifi = [device for device in usable if device.transport == "wifi"]
         if len(wifi) == 1:
             return wifi[0].serial
-        if len(usable) == 1:
-            return usable[0].serial
+        if not wifi:
+            # Only USB phones or emulators are online: the Wi-Fi phone never
+            # attached, so never return one of them as the just-connected phone.
+            raise WifiError(_PHONE_NOT_ONLINE)
 
         raise WifiError(
             "ADB paired and tried to connect, but expected exactly one "

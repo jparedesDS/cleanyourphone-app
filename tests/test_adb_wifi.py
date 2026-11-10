@@ -436,11 +436,32 @@ def test_no_connected_device_after_connect_raises_wifi_error():
     assert "usb" in message
 
 
+def test_a_lone_usb_device_after_connect_is_not_returned_as_the_phone():
+    runner = FakeRunner(
+        completed(),
+        completed(stdout="connected to 192.168.1.42:37099\n"),
+        completed(
+            stdout=(
+                "List of devices attached\n"
+                "R58M12345  device product:shiba model:Pixel_8 transport_id:1\n"
+            )
+        ),
+    )
+    connector = WifiConnector(make_info(), runner=runner)
+
+    with pytest.raises(WifiError) as excinfo:
+        connector.pair_and_connect("123456", PAIRING, CONNECT)
+
+    message = str(excinfo.value).lower()
+    assert "did not appear" in message
+    assert "usb" in message
+
+
 def test_ambiguous_devices_after_connect_raise_wifi_error():
     devices = (
         "List of devices attached\n"
-        "R58M12345  device product:shiba model:Pixel_8 transport_id:1\n"
-        "R58M67890  device product:shiba model:Pixel_7 transport_id:2\n"
+        "adb-AAA._adb-tls-connect._tcp.\tdevice product:shiba model:Pixel_8\n"
+        "adb-BBB._adb-tls-connect._tcp.\tdevice product:shiba model:Pixel_7\n"
     )
     runner = FakeRunner(
         completed(),
