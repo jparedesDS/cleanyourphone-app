@@ -413,3 +413,38 @@ def test_states_cover_the_guided_flow():
         "done",
         "error",
     ]
+
+
+def test_attach_pins_the_device_before_the_probe():
+    s = SessionController()
+    s.attach("usb-1", Transport.USB)
+
+    assert s.serial == "usb-1"
+    assert s.transport is Transport.USB
+    assert s.probe is None
+    assert s.state is SessionState.CONNECTING
+
+    s.connected("usb-1", Transport.USB, probe(), profile_id="pixel-8")
+    assert s.state is SessionState.CHECKING
+    assert s.probe is not None
+
+
+def test_attach_cannot_switch_a_pinned_transport():
+    s = SessionController()
+    s.attach("usb-1", Transport.USB)
+
+    with pytest.raises(TransportLocked):
+        s.attach("wifi-1", Transport.WIFI)
+
+    assert s.serial == "usb-1"
+    assert s.transport is Transport.USB
+
+
+def test_attach_rejects_an_empty_serial():
+    s = SessionController()
+
+    with pytest.raises(ValueError):
+        s.attach("   ", Transport.USB)
+
+    assert s.serial is None
+    assert s.state is SessionState.WELCOME

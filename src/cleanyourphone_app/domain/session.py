@@ -122,6 +122,32 @@ class SessionController:
         self.transport = self._require_transport(transport)
         return transport
 
+    def attach(self, serial: str, transport: Transport) -> None:
+        """Pin the device found by the connection page before it is probed.
+
+        The probe is only available once the check page runs, so pairing and
+        the one-device shortcut record the exact serial and transport here and
+        leave the session in ``CONNECTING``. :meth:`connected` completes the
+        record with the probe and moves the session to ``CHECKING``.
+        """
+        self._require_state(
+            SessionState.WELCOME,
+            SessionState.CONNECTING,
+            action="attach a device",
+        )
+        checked_serial = _require_text(serial, "serial")
+        checked_transport = self._require_transport(transport)
+
+        if self.serial is not None and checked_serial != self.serial:
+            self.probe = None
+            self.profile_id = None
+        self.serial = checked_serial
+        self.transport = checked_transport
+        self.blocked_reason = None
+        self.blocked_link = None
+        self.error_message = None
+        self.state = SessionState.CONNECTING
+
     def connected(
         self,
         serial: str,

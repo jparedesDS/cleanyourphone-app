@@ -27,6 +27,16 @@ QLabel[role="muted"] {
     color: #A19E96;
 }
 
+QLabel[role="error"] {
+    color: #F3F1EC;
+    font-weight: 600;
+}
+
+QLabel[role="success"] {
+    color: #A78BFA;
+    font-weight: 600;
+}
+
 QLabel[role="title"] {
     color: #F3F1EC;
     font-size: 30px;

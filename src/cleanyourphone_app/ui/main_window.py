@@ -26,7 +26,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cleanyourphone_app.domain.session import SessionError
+from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
 from cleanyourphone_app.services.logging import LOGGER_NAME
+from cleanyourphone_app.ui.pages.connect import ConnectPage, transport_for
+from cleanyourphone_app.ui.pages.setup import SetupPage
+from cleanyourphone_app.ui.pages.welcome import WelcomePage
 
 if TYPE_CHECKING:
     from cleanyourphone_app.ui.app import AppContext
@@ -115,6 +120,10 @@ class MainWindow(QMainWindow):
         self.context = context
         self._pages: dict[str, QWidget] = {}
         self._current_step = "welcome"
+        self._real_pages = False
+        self.setup_page: SetupPage | None = None
+        self.welcome_page: WelcomePage | None = None
+        self.connect_page: ConnectPage | None = None
 
         self.setObjectName("MainWindow")
         self.setMinimumSize(900, 640)
@@ -226,6 +235,67 @@ class MainWindow(QMainWindow):
         for name in PAGE_NAMES:
             self.register_page(name, _PlaceholderPage(name, self.context))
 
+    def _ensure_real_pages(self) -> None:
+        """Register the first-run pages once, replacing their placeholders."""
+        if self._real_pages:
+            return
+
+        self.welcome_page = WelcomePage(self.context)
+        self.welcome_page.transport_selected.connect(self._open_connect)
+        self.register_page("welcome", self.welcome_page)
+
+        self.connect_page = ConnectPage(self.context)
+        self.register_page("connect", self.connect_page)
+
+        self.setup_page = SetupPage(self.context, on_ready=self.start_flow)
+        self.register_page("setup", self.setup_page)
+        self._real_pages = True
+
+    def _open_connect(self, mode: str) -> None:
+        if self.connect_page is None:
+            return
+        self.connect_page.select_tab(mode)
+        self.show_page("connect")
+
+    def start_flow(self) -> str:
+        """Choose setup, check or welcome from the ADB and device state.
+
+        Called by :func:`cleanyourphone_app.ui.app.run` and again when the setup
+        page finishes. Device discovery is best effort: a listing failure never
+        stops the app from reaching the welcome screen.
+        """
+        self._ensure_real_pages()
+
+        info = self.context.locate_adb()
+        if info is None:
+            return self.show_page("setup")
+
+        device = self._single_online_device(info)
+        if device is not None:
+            try:
+                self.context.session.attach(device.serial, transport_for(device))
+            except (SessionError, ValueError, TypeError):
+                logging.getLogger(LOGGER_NAME).warning(
+                    "could not pin the only online device at startup"
+                )
+            else:
+                return self.show_page("check")
+
+        return self.show_page("welcome")
+
+    def _single_online_device(self, info: AdbInfo) -> DeviceEntry | None:
+        try:
+            entries = self.context.device_lister(info)
+        except (AdbError, OSError):
+            logging.getLogger(LOGGER_NAME).warning(
+                "could not list devices while starting the flow"
+            )
+            return None
+        if not isinstance(entries, (list, tuple)):
+            return None
+        online = [entry for entry in entries if entry.state == "device"]
+        return online[0] if len(online) == 1 else None
+
     def _load_theme(self) -> None:
         theme = Path(__file__).with_name("theme.qss").read_text(encoding="utf-8")
         self.setStyleSheet(theme)
@@ -250,6 +320,10 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(page)
         if was_current:
             self.stack.setCurrentWidget(page)
+
+        navigate = getattr(page, "navigate", None)
+        if navigate is not None and hasattr(navigate, "connect"):
+            navigate.connect(self.show_page)
 
         retranslate = getattr(page, "retranslate", None)
         if callable(retranslate):
