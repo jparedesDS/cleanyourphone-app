@@ -85,6 +85,28 @@ QWidget#LanguageSwitch {
     background-color: transparent;
 }
 
+QWidget#review_content {
+    background-color: #121316;
+}
+
+QFrame#PackageRow {
+    background-color: #1B1C21;
+    border: 1px solid #1B1C21;
+    border-radius: 8px;
+}
+
+QFrame#PackageRow:hover {
+    border-color: #A78BFA;
+}
+
+QFrame#PackageRow[selectable="false"] {
+    background-color: #17181C;
+}
+
+QFrame#PackageRow[selectable="false"]:hover {
+    border-color: #1B1C21;
+}
+
 QPushButton {
     background-color: #1B1C21;
     color: #F3F1EC;

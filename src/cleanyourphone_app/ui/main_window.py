@@ -29,9 +29,11 @@ from PySide6.QtWidgets import (
 from cleanyourphone_app.domain.session import SessionError
 from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
 from cleanyourphone_app.services.logging import LOGGER_NAME
+from cleanyourphone_app.ui.pages.backup import BackupPage
 from cleanyourphone_app.ui.pages.blocked import SAFETY_DOCS_URL, BlockedPage
 from cleanyourphone_app.ui.pages.check import CheckPage
 from cleanyourphone_app.ui.pages.connect import ConnectPage, transport_for
+from cleanyourphone_app.ui.pages.review import ReviewPage
 from cleanyourphone_app.ui.pages.setup import SetupPage
 from cleanyourphone_app.ui.pages.welcome import WelcomePage
 
@@ -127,6 +129,8 @@ class MainWindow(QMainWindow):
         self.welcome_page: WelcomePage | None = None
         self.connect_page: ConnectPage | None = None
         self.check_page: CheckPage | None = None
+        self.backup_page: BackupPage | None = None
+        self.review_page: ReviewPage | None = None
         self.blocked_page: BlockedPage | None = None
 
         self.setObjectName("MainWindow")
@@ -254,6 +258,12 @@ class MainWindow(QMainWindow):
         self.check_page = CheckPage(self.context)
         self.register_page("check", self.check_page)
 
+        self.backup_page = BackupPage(self.context)
+        self.register_page("backup", self.backup_page)
+
+        self.review_page = ReviewPage(self.context)
+        self.register_page("review", self.review_page)
+
         self.blocked_page = BlockedPage(self.context)
         self.blocked_page.restart_requested.connect(self._restart_after_block)
         self.register_page("blocked", self.blocked_page)
@@ -377,6 +387,10 @@ class MainWindow(QMainWindow):
             return
         if self.check_page is not None:
             self.check_page.reset()
+        for page in (self.backup_page, self.review_page):
+            reset = getattr(page, "reset", None)
+            if callable(reset):
+                reset()
 
     @property
     def current_page_name(self) -> str:
@@ -413,7 +427,13 @@ class MainWindow(QMainWindow):
         self.retranslate()
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        for page in (self.setup_page, self.connect_page, self.check_page):
+        for page in (
+            self.setup_page,
+            self.connect_page,
+            self.check_page,
+            self.backup_page,
+            self.review_page,
+        ):
             shutdown = getattr(page, "shutdown", None)
             if callable(shutdown):
                 shutdown()
