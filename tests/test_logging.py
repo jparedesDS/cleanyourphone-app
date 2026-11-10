@@ -25,6 +25,18 @@ def test_redacts_package_ids():
     assert result.count("[redacted]") == 2
 
 
+def test_redacts_sentence_final_ipv4():
+    assert redact("ip 192.168.1.42.") == "ip [redacted]."
+
+
+def test_redacts_sentence_final_package_id():
+    assert redact("package com.example.secret.") == "package [redacted]."
+
+
+def test_does_not_redact_partial_dotted_numbers():
+    assert redact("value 192.168.1.42.5") == "value 192.168.1.42.5"
+
+
 def test_redacts_wireless_endpoints_with_port():
     result = redact("connected to 192.168.1.42:37123")
     assert "192.168.1.42" not in result

@@ -23,13 +23,13 @@ DEFAULT_BACKUP_COUNT = 3
 _OCTET = r"(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])"
 _IPV4_PATTERN = re.compile(
     rf"(?<![A-Za-z0-9.])(?:{_OCTET}\.){{3}}{_OCTET}"
-    r"(?::[0-9]{1,5})?(?![A-Za-z0-9.])"
+    r"(?::[0-9]{1,5})?(?![A-Za-z0-9]|\.[0-9])"
 )
 _PACKAGE_PATTERN = re.compile(
     r"(?<![A-Za-z0-9_.$])"
     r"(?:com|org|net|io|me|tv|app|dev|edu|gov|android|xyz)"
     r"(?:\.[A-Za-z0-9_$]+)+"
-    r"(?![A-Za-z0-9_.$])"
+    r"(?![A-Za-z0-9_$])"
 )
 _EMULATOR_SERIAL_PATTERN = re.compile(
     r"(?<![A-Za-z0-9_-])emulator-[0-9]+(?![A-Za-z0-9_-])"
