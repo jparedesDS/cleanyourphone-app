@@ -57,7 +57,11 @@ class FakeCli:
         self.probe_result = result if result is not None else probe()
         self.probe_error = error
         self.probe_calls = 0
+        self.serial: str | None = None
         self._lock = threading.Lock()
+
+    def set_serial(self, serial: str | None) -> None:
+        self.serial = serial
 
     def probe(self) -> ProbeData:
         with self._lock:

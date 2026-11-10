@@ -25,7 +25,7 @@ Requirements: Windows 10/11 x64, Python 3.12 or newer, Git, and Inno Setup 6
 powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 ```
 
-The script clones the pinned CLI tag (`v0.3.1`), freezes it as an onedir sidecar,
+The script clones the pinned CLI tag (`v0.3.2`), freezes it as an onedir sidecar,
 stages its 156 profiles, freezes the Qt app, and compiles the per-user installer.
 Outputs:
 

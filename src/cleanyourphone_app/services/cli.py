@@ -285,6 +285,7 @@ class CliClient:
         if isinstance(command, str) or not command:
             raise ValueError("command must be a non-empty sequence of strings")
         self._command = tuple(str(part) for part in command)
+        self._serial: str | None = None
 
         merged = dict(os.environ)
         if env is not None:
@@ -295,6 +296,29 @@ class CliClient:
         merged["CLEANYOURPHONE_STATE"] = str(home)
         merged["PYTHONIOENCODING"] = "utf-8"
         self._env = merged
+
+    @property
+    def serial(self) -> str | None:
+        """The device serial prepended to every sidecar command."""
+        return self._serial
+
+    def set_serial(self, serial: str | None) -> None:
+        """Pin the exact ADB serial for this session.
+
+        Wireless debugging can list the same phone twice (IP:port and mDNS);
+        the CLI must receive the serial the user chose instead of guessing.
+        """
+        if serial is None:
+            self._serial = None
+            return
+        if not isinstance(serial, str):
+            raise TypeError("serial must be a string or None")
+        value = serial.strip()
+        if not value:
+            raise ValueError("serial must not be empty")
+        if any(character.isspace() for character in value):
+            raise ValueError("serial must not contain whitespace")
+        self._serial = value
 
     def set_adb_path(self, path: str | os.PathLike[str] | None) -> None:
         """Point the next sidecar call at a verified ADB binary.
@@ -318,6 +342,8 @@ class CliClient:
         commands such as ``disable`` fail in ways the UI has to inspect.
         """
         argv = tuple(str(arg) for arg in args)
+        if self._serial is not None and argv[:1] != ("--version",):
+            argv = ("--serial", self._serial, *argv)
         try:
             completed = subprocess.run(
                 [*self._command, *argv],

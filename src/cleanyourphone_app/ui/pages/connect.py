@@ -69,6 +69,39 @@ def transport_for(device: DeviceEntry) -> Transport:
         return Transport.USB
 
 
+def _is_mdns_serial(serial: str) -> bool:
+    return "._adb-tls-connect._tcp" in serial
+
+
+def dedupe_online_devices(entries: list[DeviceEntry]) -> list[DeviceEntry]:
+    """Collapse the IP and mDNS rows that ADB lists for the same phone.
+
+    Wireless debugging commonly appears twice, once as ``host:port`` and once
+    as an ``adb-..._adb-tls-connect._tcp`` name. Showing both makes the model
+    list ambiguous. Keep the explicit host:port row because the mDNS name can
+    change, but leave different models or transports as separate choices.
+    """
+    online: list[DeviceEntry] = []
+    for entry in entries:
+        if not isinstance(entry, DeviceEntry) or entry.state != "device":
+            continue
+        index = next(
+            (
+                position
+                for position, seen in enumerate(online)
+                if seen.model == entry.model and seen.transport == entry.transport
+            ),
+            None,
+        )
+        if index is None:
+            online.append(entry)
+        elif _is_mdns_serial(online[index].serial) and not _is_mdns_serial(
+            entry.serial
+        ):
+            online[index] = entry
+    return online
+
+
 class ConnectPage(Page):
     """Pair over Wi-Fi or pick a USB device, then hand it to the check page."""
 
@@ -298,6 +331,7 @@ class ConnectPage(Page):
     def _record(self, serial: str, transport: Transport) -> bool:
         try:
             self.context.session.attach(serial, transport)
+            self.context.cli.set_serial(serial)
         except (SessionError, ValueError, TypeError):
             self._show_error("connect.failed")
             return False
@@ -504,7 +538,7 @@ class ConnectPage(Page):
             self._show_failure_controls(usb_fallback=False)
             return
 
-        online = [entry for entry in entries if entry.state == "device"]
+        online = dedupe_online_devices(entries)
         if not online:
             self.device_label.hide()
             self.device_combo.hide()

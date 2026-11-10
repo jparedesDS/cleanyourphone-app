@@ -310,6 +310,7 @@ class MainWindow(QMainWindow):
         if device is not None:
             try:
                 self.context.session.attach(device.serial, transport_for(device))
+                self.context.cli.set_serial(device.serial)
             except (SessionError, ValueError, TypeError):
                 logging.getLogger(LOGGER_NAME).warning(
                     "could not pin the only online device at startup"
@@ -395,6 +396,7 @@ class MainWindow(QMainWindow):
         """Throw away the blocked session before returning to Welcome."""
         try:
             self.context.session.reset()
+            self.context.cli.set_serial(None)
         except (SessionError, ValueError, TypeError):
             logging.getLogger(LOGGER_NAME).warning(
                 "could not reset the blocked session"

@@ -146,8 +146,8 @@ try {
     $env:CLEANYOURPHONE_PROFILES = $DistProfiles
 
     $sidecarVersion = (& $SidecarExe "--version" | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or $sidecarVersion -ne "CleanYourPhone 0.3.1") {
-        throw "Sidecar smoke test failed: expected 'CleanYourPhone 0.3.1', got '$sidecarVersion' (exit $LASTEXITCODE)."
+    if ($LASTEXITCODE -ne 0 -or $sidecarVersion -ne "CleanYourPhone 0.3.2") {
+        throw "Sidecar smoke test failed: expected 'CleanYourPhone 0.3.2', got '$sidecarVersion' (exit $LASTEXITCODE)."
     }
 
     $sidecarValidation = (& $SidecarExe "validate" | Out-String).Trim()

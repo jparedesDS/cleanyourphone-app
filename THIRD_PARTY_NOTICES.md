@@ -11,7 +11,7 @@ License. See [LICENSE](LICENSE). Copyright (c) 2026 jparedesDS.
 
 ## CleanYourPhone CLI (sidecar)
 
-The app ships a frozen build of the CleanYourPhone CLI at tag `v0.3.1` from
+The app ships a frozen build of the CleanYourPhone CLI at tag `v0.3.2` from
 <https://github.com/jparedesDS/cleanyourphone>. The CLI is licensed under the
 MIT License, copyright (c) 2026 jparedesDS.
 

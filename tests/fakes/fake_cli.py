@@ -250,10 +250,13 @@ def main(argv: list[str]) -> int:
         print(stderr_text, file=sys.stderr)
 
     if "--version" in argv:
-        print("CleanYourPhone 0.3.1")
+        print("CleanYourPhone 0.3.2")
         return _exit_code("VERSION")
 
     args = [arg for arg in argv if arg != "--json"]
+    if "--serial" in args:
+        index = args.index("--serial")
+        del args[index : index + 2]
     if not args:
         print("error: missing command", file=sys.stderr)
         return 2

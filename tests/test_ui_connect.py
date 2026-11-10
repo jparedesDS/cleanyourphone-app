@@ -364,8 +364,37 @@ def test_usb_connect_attaches_the_single_online_device(qtbot, tmp_path):
     assert context.session.serial == "usb-1"
     assert context.session.transport is Transport.USB
     assert context.session.state is SessionState.CONNECTING
+    assert context.cli.serial == "usb-1"
     assert page.next_page == "check"
     assert lister.calls == [context.adb_info]
+
+
+def test_the_ip_and_mdns_rows_for_one_phone_collapse_to_one_choice(qtbot, tmp_path):
+    mdns = DeviceEntry(
+        serial="adb-ABC._adb-tls-connect._tcp.",
+        state="device",
+        model="ONEPLUS_A6013",
+        transport="wifi",
+    )
+    address = DeviceEntry(
+        serial="192.0.2.10:5555",
+        state="device",
+        model="ONEPLUS_A6013",
+        transport="wifi",
+    )
+    context, _ = make_context(tmp_path, lister=DeviceLister([mdns, address]))
+    page = ConnectPage(context)
+    qtbot.addWidget(page)
+
+    page.select_tab("usb")
+    page.usb_connect_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "check", timeout=3000)
+    settle(qtbot, page)
+
+    assert page.device_combo.isVisibleTo(page) is False
+    assert context.session.serial == "192.0.2.10:5555"
+    assert context.session.transport is Transport.WIFI
+    assert context.cli.serial == "192.0.2.10:5555"
 
 
 def test_usb_listing_runs_in_a_worker_and_disables_actions(qtbot, tmp_path):
@@ -503,6 +532,7 @@ def test_startup_skips_welcome_when_exactly_one_device_is_online(qtbot, tmp_path
     assert window.current_step == "check"
     assert context.session.serial == "usb-1"
     assert context.session.transport is Transport.USB
+    assert context.cli.serial == "usb-1"
     assert context.session.state is SessionState.CONNECTING
     assert len(lister.calls) == 1
 
