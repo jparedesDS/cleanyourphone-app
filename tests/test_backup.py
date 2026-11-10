@@ -79,6 +79,30 @@ def test_latest_returns_none_when_the_root_does_not_exist(tmp_path):
     assert BackupStore.latest(SERIAL, FINGERPRINT, tmp_path / "missing") is None
 
 
+def test_matching_returns_only_identity_matches_oldest_first(tmp_path):
+    root = tmp_path / "backup"
+    older = write_backup(root, "older", timestamp="20260101_120000")
+    write_backup(root, "other-phone", serial="usb-2")
+    newer = write_backup(root, "newer", timestamp="20260102_120000")
+
+    assert BackupStore.matching(SERIAL, FINGERPRINT, root) == (older, newer)
+
+
+def test_is_fresh_rejects_a_preexisting_folder_until_it_is_rewritten(tmp_path):
+    root = tmp_path / "backup"
+    folder = write_backup(root, "20260102_120000")
+    old = time.time() - 300
+    os.utime(folder / "meta.json", (old, old))
+    os.utime(folder, (old, old))
+    since = time.time() - 60
+
+    assert BackupStore.is_fresh(folder, since) is False
+
+    os.utime(folder / "meta.json", None)
+
+    assert BackupStore.is_fresh(folder, since) is True
+
+
 def test_latest_falls_back_to_folder_mtime_without_a_timestamp(tmp_path):
     root = tmp_path / "backup"
     older = write_backup(root, "older", timestamp=None)

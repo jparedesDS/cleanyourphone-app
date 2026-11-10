@@ -1,22 +1,26 @@
 """Locate the backup folder the CLI just wrote for this exact phone.
 
 The CLI owns the backup folder layout (one directory per run, each with a
-``meta.json``). The app only needs one fact after ``backup``: the newest matching
-folder for the pinned serial and fingerprint. A mismatched or unreadable folder
-is ignored, so a stale backup can never be used to unlock Review.
+``meta.json``). The app only needs one fact after ``backup``: a folder for the
+pinned serial and fingerprint that was created (or rewritten) by this run. A
+mismatched, unreadable, or pre-existing folder is ignored, so a stale backup can
+never unlock Review.
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+Candidate = tuple[tuple[str, float], Path]
 
-def _mtime(folder: Path) -> float:
+
+def _mtime(path: Path) -> float:
     try:
-        return folder.stat().st_mtime
+        return path.stat().st_mtime
     except OSError:
         return 0.0
 
@@ -34,6 +38,23 @@ def _timestamp_key(meta: Mapping[str, Any], folder: Path) -> tuple[str, float]:
     if isinstance(raw, (int, float)) and not isinstance(raw, bool):
         return f"{float(raw):020.6f}", _mtime(folder)
     return f"{_mtime(folder):020.6f}", _mtime(folder)
+
+
+def _timestamp_epoch(value: object) -> float | None:
+    """Parse the CLI timestamp formats into seconds since the epoch."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    raw = value.strip()
+    try:
+        return datetime.strptime(raw, "%Y%m%d_%H%M%S").timestamp()
+    except ValueError:
+        pass
+    try:
+        return datetime.fromisoformat(raw).timestamp()
+    except ValueError:
+        return None
 
 
 def _read_meta(path: Path) -> dict[str, Any] | None:
@@ -56,8 +77,38 @@ def _matches(meta: Mapping[str, Any], serial: str, fingerprint: str) -> bool:
     )
 
 
+def _validate_identity(serial: str, fingerprint: str, root: Path) -> None:
+    if not isinstance(serial, str) or not serial.strip():
+        raise ValueError("serial must be a non-empty string")
+    if not isinstance(fingerprint, str) or not fingerprint.strip():
+        raise ValueError("fingerprint must be a non-empty string")
+    if not isinstance(root, Path):
+        raise TypeError("root must be a pathlib.Path")
+
+
+def _scan(serial: str, fingerprint: str, root: Path) -> list[Candidate]:
+    _validate_identity(serial, fingerprint, root)
+    if not root.is_dir():
+        return []
+
+    candidates: list[Candidate] = []
+    for meta_path in root.glob("*/meta.json"):
+        meta = _read_meta(meta_path)
+        if meta is None or not _matches(meta, serial, fingerprint):
+            continue
+        folder = meta_path.parent
+        candidates.append((_timestamp_key(meta, folder), folder))
+    candidates.sort(key=lambda item: item[0])
+    return candidates
+
+
 class BackupStore:
     """Read-only view of the CLI's backup directory."""
+
+    @staticmethod
+    def matching(serial: str, fingerprint: str, root: Path) -> tuple[Path, ...]:
+        """Return every matching backup folder, oldest first."""
+        return tuple(folder for _, folder in _scan(serial, fingerprint, root))
 
     @staticmethod
     def latest(serial: str, fingerprint: str, root: Path) -> Path | None:
@@ -67,28 +118,36 @@ class BackupStore:
         ``Path.home() / ".cleanyourphone" / "backup"``. Malformed metadata is
         skipped; the caller treats ``None`` as a failed backup and stops.
         """
-        if not isinstance(serial, str) or not serial.strip():
-            raise ValueError("serial must be a non-empty string")
-        if not isinstance(fingerprint, str) or not fingerprint.strip():
-            raise ValueError("fingerprint must be a non-empty string")
-        if not isinstance(root, Path):
-            raise TypeError("root must be a pathlib.Path")
-
-        if not root.is_dir():
-            return None
-
-        candidates: list[tuple[tuple[str, float], Path]] = []
-        for meta_path in root.glob("*/meta.json"):
-            meta = _read_meta(meta_path)
-            if meta is None or not _matches(meta, serial, fingerprint):
-                continue
-            folder = meta_path.parent
-            candidates.append((_timestamp_key(meta, folder), folder))
-
+        candidates = _scan(serial, fingerprint, root)
         if not candidates:
             return None
-        candidates.sort(key=lambda item: item[0])
         return candidates[-1][1]
+
+    @staticmethod
+    def is_fresh(folder: Path, since: float) -> bool:
+        """Return whether *folder* was created or rewritten at/after *since*.
+
+        The CLI writes ``meta.json`` last, so both the folder and its metadata
+        file are checked. A parsed ``timestamp`` is used as a third signal for
+        filesystems with coarse modification times.
+        """
+        if not isinstance(folder, Path):
+            raise TypeError("folder must be a pathlib.Path")
+        if isinstance(since, bool) or not isinstance(since, (int, float)):
+            raise TypeError("since must be a number")
+
+        for path in (folder, folder / "meta.json"):
+            try:
+                if path.stat().st_mtime >= since:
+                    return True
+            except OSError:
+                continue
+
+        meta = _read_meta(folder / "meta.json")
+        if meta is None:
+            return False
+        timestamp = _timestamp_epoch(meta.get("timestamp"))
+        return timestamp is not None and timestamp >= since
 
 
 __all__ = ["BackupStore"]

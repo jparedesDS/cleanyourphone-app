@@ -3,7 +3,8 @@
 The page shows the tested ``DISABLE`` list, the optional ``ASK`` list and a
 collapsed not-changed list. Before navigating to Apply it re-runs ``plan`` and
 intersects the selection, so a package that stopped being actionable is never
-sent to the CLI.
+sent to the CLI. The page records the selection and leaves the session in
+``REVIEW``; Apply owns the ``start_apply()`` transition.
 """
 
 from __future__ import annotations
@@ -363,11 +364,14 @@ class ReviewPage(Page):
             return
         try:
             self.context.session.set_selection(selected)
-            self.context.session.start_apply()
         except (SessionError, ValueError, TypeError):
+            # No disable has run yet, so the phone is still unchanged. Keep the
+            # session in REVIEW and let the user retry the review.
             self._show_error("review.plan_changed", retry=False)
             self._update_selection_state()
             return
+        # ApplyPage owns the REVIEW -> APPLYING transition when the user
+        # clicks Apply; Review must not start the write flow by itself.
         self._go("apply")
 
     # ----------------------------------------------------------------- rows

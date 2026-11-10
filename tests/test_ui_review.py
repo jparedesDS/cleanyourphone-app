@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
+import time
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -97,17 +99,27 @@ def write_backup(root: Path, name: str = "20260102_120000") -> Path:
 
 
 class FakeBackupCli:
-    def __init__(self, result: CliResult | None = None, error: Exception | None = None):
+    def __init__(
+        self,
+        result: CliResult | None = None,
+        error: Exception | None = None,
+        root: Path | None = None,
+    ):
         self.backup_result = result or CliResult(("backup",), 0, "", "")
         self.backup_error = error
         self.backup_calls = 0
         self.thread_name = ""
+        self.root = root
+        self.written: list[Path] = []
 
     def backup(self) -> CliResult:
         self.backup_calls += 1
         self.thread_name = threading.current_thread().name
         if self.backup_error is not None:
             raise self.backup_error
+        if self.backup_result.returncode == 0 and self.root is not None:
+            name = f"20260102_{120000 + self.backup_calls - 1:06d}"
+            self.written.append(write_backup(self.root, name))
         return self.backup_result
 
 
@@ -143,9 +155,8 @@ def wait_for_review_page(qtbot, page: ReviewPage) -> None:
 def test_backup_page_records_the_newest_matching_folder(qtbot, tmp_path):
     root = tmp_path / ".cleanyourphone" / "backup"
     older = write_backup(root, "20260101_120000")
-    newest = write_backup(root, "20260102_120000")
     context = backup_context()
-    cli = FakeBackupCli()
+    cli = FakeBackupCli(root=root)
 
     page = BackupPage(context, cli, root=root)
     qtbot.addWidget(page)
@@ -155,6 +166,8 @@ def test_backup_page_records_the_newest_matching_folder(qtbot, tmp_path):
     qtbot.waitUntil(lambda: page.busy is False, timeout=3000)
 
     assert cli.backup_calls == 1
+    assert len(cli.written) == 1
+    newest = cli.written[0]
     assert page.backup_path == newest
     assert older != page.backup_path
     assert context.session.backup_path == newest
@@ -176,9 +189,9 @@ def test_backup_runs_off_the_ui_thread(qtbot, tmp_path):
             return super().backup()
 
     root = tmp_path / "backup"
-    write_backup(root)
     context = backup_context()
     cli = BlockingCli()
+    cli.root = root
     page = BackupPage(context, cli, root=root)
     qtbot.addWidget(page)
 
@@ -243,11 +256,56 @@ def test_backup_without_a_matching_folder_never_continues(qtbot, tmp_path):
     assert page.error_label.text() == context.translator.tr("backup.failed")
 
 
+def test_backup_with_only_a_preexisting_matching_folder_never_continues(
+    qtbot, tmp_path
+):
+    context = backup_context()
+    root = tmp_path / "backup"
+    stale = write_backup(root, "20260102_120000")
+    old = time.time() - 300
+    os.utime(stale / "meta.json", (old, old))
+    os.utime(stale, (old, old))
+    # The CLI reports success but does not create a new folder.
+    cli = FakeBackupCli()
+
+    page = BackupPage(context, cli, root=root)
+    qtbot.addWidget(page)
+    page.show()
+
+    qtbot.waitUntil(lambda: page.busy is False and page.error_label.isVisibleTo(page))
+
+    assert cli.backup_calls == 1
+    assert page.next_page is None
+    assert page.backup_path is None
+    assert context.session.backup_path is None
+    assert context.session.state is SessionState.BACKUP
+    assert page.error_label.text() == context.translator.tr("backup.failed")
+    assert stale.exists()
+
+
+def test_backup_worker_exception_stops_with_a_clear_error(qtbot, tmp_path):
+    context = backup_context()
+    cli = FakeBackupCli(error=CliError("backup crashed"))
+
+    page = BackupPage(context, cli, root=tmp_path / "backup")
+    qtbot.addWidget(page)
+    page.show()
+
+    qtbot.waitUntil(lambda: page.busy is False and page.error_label.isVisibleTo(page))
+
+    assert page.next_page is None
+    assert page.error_label.text() == context.translator.tr("backup.failed")
+    assert page.retry_button.isVisibleTo(page) is True
+    assert page.backup_path is None
+    assert context.session.backup_path is None
+    assert context.session.state is SessionState.BACKUP
+
+
 def test_backup_retry_can_succeed_after_a_failure(qtbot, tmp_path):
     root = tmp_path / "backup"
-    write_backup(root)
+    stale = write_backup(root)
     context = backup_context()
-    cli = FakeBackupCli(result=CliResult(("backup",), 1, "", "no adb"))
+    cli = FakeBackupCli(result=CliResult(("backup",), 1, "", "no adb"), root=root)
 
     page = BackupPage(context, cli, root=root)
     qtbot.addWidget(page)
@@ -259,8 +317,10 @@ def test_backup_retry_can_succeed_after_a_failure(qtbot, tmp_path):
     qtbot.waitUntil(lambda: page.next_page == "review", timeout=3000)
 
     assert cli.backup_calls == 2
+    assert len(cli.written) == 1
+    assert cli.written[0] != stale
     assert context.session.state is SessionState.REVIEW
-    assert context.session.backup_path is not None
+    assert context.session.backup_path == cli.written[0]
 
 
 # ---------------------------------------------------------------------------
@@ -426,8 +486,13 @@ def test_apply_replans_and_drops_a_package_that_is_no_longer_actionable(qtbot):
 
     assert cli.plan_calls == ["pixel-8", "pixel-8"]
     assert context.session.selected_packages == ("com.example.ask",)
-    assert context.session.state is SessionState.APPLYING
+    assert context.session.state is SessionState.REVIEW
+    assert context.session.can_apply() is True
     assert page.next_page == "apply"
+
+    # ApplyPage owns the transition; the reviewed session must be startable.
+    context.session.start_apply()
+    assert context.session.state is SessionState.APPLYING
 
 
 def test_apply_stops_when_the_replan_removes_every_selection(qtbot):
@@ -558,10 +623,9 @@ def test_main_window_registers_real_backup_and_review_pages(qtbot):
 
 def test_backup_then_review_runs_through_the_real_shell(qtbot, tmp_path, monkeypatch):
     root = tmp_path / ".cleanyourphone" / "backup"
-    write_backup(root)
     monkeypatch.setattr(backup_page_module, "default_backup_root", lambda: root)
 
-    cli = FakeBackupCli()
+    cli = FakeBackupCli(root=root)
     cli.plan = FakePlanCli(default_plan()).plan  # type: ignore[attr-defined]
     context = AppContext.fake(
         translator=Translator("en"),
@@ -583,5 +647,6 @@ def test_backup_then_review_runs_through_the_real_shell(qtbot, tmp_path, monkeyp
     qtbot.waitUntil(lambda: window.review_page.model is not None, timeout=3000)
 
     assert context.session.state is SessionState.REVIEW
-    assert context.session.backup_path == root / "20260102_120000"
+    assert len(cli.written) == 1
+    assert context.session.backup_path == cli.written[0]
     assert window.review_page.model.selected_packages() == ("com.example.disable",)

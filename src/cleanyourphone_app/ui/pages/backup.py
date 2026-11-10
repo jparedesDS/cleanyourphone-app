@@ -9,6 +9,7 @@ hard stop, and there is deliberately no skip control.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -170,16 +171,29 @@ class BackupPage(Page):
             return
 
         self._has_run = True
-        self._set_busy(True)
         fingerprint = probe.fingerprint
         root = self._root
         cli = self._cli
+        # A matching backup from an earlier run must not unlock this session.
+        # Snapshot what exists, then require the folder chosen after the CLI
+        # call to be new or freshly rewritten.
+        try:
+            known = set(BackupStore.matching(serial, fingerprint, root))
+        except OSError:
+            self._show_error("backup.failed")
+            return
+        started_at = time.time()
+        self._set_busy(True)
 
-        def call() -> tuple[object, Path | None]:
+        def call() -> tuple[object, Path | None, bool]:
             result = cli.backup()
             if not _result_ok(result):
-                return result, None
-            return result, BackupStore.latest(serial, fingerprint, root)
+                return result, None, False
+            folder = BackupStore.latest(serial, fingerprint, root)
+            if not isinstance(folder, Path):
+                return result, None, False
+            fresh = folder not in known or BackupStore.is_fresh(folder, started_at)
+            return result, folder, fresh
 
         if not self._call.start(call):
             self._set_busy(False)
@@ -210,8 +224,11 @@ class BackupPage(Page):
         self.retry_button.hide()
 
     def _backup_succeeded(self, payload: object) -> None:
-        result, folder = payload if isinstance(payload, tuple) else (None, None)
-        if not _result_ok(result) or not isinstance(folder, Path):
+        if isinstance(payload, tuple) and len(payload) == 3:
+            result, folder, fresh = payload
+        else:
+            result, folder, fresh = None, None, False
+        if not _result_ok(result) or not isinstance(folder, Path) or not fresh:
             self._show_error("backup.failed")
             return
 
