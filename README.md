@@ -17,3 +17,15 @@ The CLI lives in that repository too.
 - No release.
 
 When the first build exists, it will be published in this repository's Releases.
+
+## Development
+
+The app is Windows 10/11 x64 only and requires Python 3.12 or newer.
+
+```powershell
+python -m pip install -e ".[dev]"
+python -m pytest -q
+python -m cleanyourphone_app --version
+```
+
+The app source is MIT. See [LICENSE](LICENSE).
