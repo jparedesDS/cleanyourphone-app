@@ -92,6 +92,16 @@ class ReviewPage(Page):
     def catalog(self) -> PackageCatalog | None:
         return self._catalog
 
+    def active_catalog(self) -> PackageCatalog | None:
+        """Return the Spanish catalog only while Spanish is the UI language."""
+        if self.context.translator.language != "es":
+            return None
+        return self._catalog
+
+    def shows_english_note(self) -> bool:
+        """Whether missing Spanish details should be marked in Spanish."""
+        return self.context.translator.language == "es"
+
     @property
     def selected_count(self) -> int:
         return self.model.selected_count() if self.model is not None else 0
@@ -413,9 +423,10 @@ class ReviewPage(Page):
         checked = self.model.is_checked(plan_row.package) if self.model else False
         row = PackageRow(
             plan_row,
-            self._catalog,
+            self.active_catalog(),
             checked=checked,
             selectable=selectable,
+            show_english_note=self.shows_english_note(),
             tr=self.tr,
             parent=self,
         )
@@ -524,7 +535,11 @@ class ReviewPage(Page):
         )
         if self._error_key is not None:
             self.error_label.setText(self.tr(self._error_key))
+        catalog = self.active_catalog()
+        show_english_note = self.shows_english_note()
         for row in self.row_widgets.values():
+            row.catalog = catalog
+            row.show_english_note = show_english_note
             row.retranslate()
         self._update_selection_state()
         self._update_backup_path()

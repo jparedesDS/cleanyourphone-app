@@ -51,6 +51,7 @@ class PackageRow(QFrame):
         *,
         checked: bool = False,
         selectable: bool = True,
+        show_english_note: bool = True,
         friendly_name: str | None = None,
         tr: Callable[[str], str] | None = None,
         parent: QWidget | None = None,
@@ -59,9 +60,12 @@ class PackageRow(QFrame):
             raise TypeError("row must be a PlanRow")
         if not isinstance(selectable, bool):
             raise TypeError("selectable must be a boolean")
+        if not isinstance(show_english_note, bool):
+            raise TypeError("show_english_note must be a boolean")
         super().__init__(parent)
         self.row = row
         self.catalog = catalog
+        self.show_english_note = show_english_note
         self._selectable = selectable
         self._friendly_name = friendly_name
         self._tr = tr or _default_tr
@@ -216,7 +220,7 @@ class PackageRow(QFrame):
             self.breaks_label.clear()
             self.breaks_label.hide()
 
-        if used_english:
+        if used_english and self.show_english_note:
             self.english_note_label.setText(ENGLISH_DETAILS_NOTE)
             self.english_note_label.show()
         else:
@@ -234,7 +238,7 @@ class PackageRow(QFrame):
         self._update_accessible_names(display_name)
 
     def _detail(self, field: str, english: str) -> tuple[str, bool]:
-        if self.catalog is None:
+        if not self.show_english_note or self.catalog is None:
             return english, False
         return self.catalog.lookup(self.row.package, field, english)
 

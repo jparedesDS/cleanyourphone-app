@@ -315,6 +315,25 @@ def test_package_row_shows_english_and_a_visible_note_when_untranslated(
     assert row.english_note_label.isHidden() is False
 
 
+def test_package_row_ignores_spanish_details_in_english_mode(qtbot, catalog):
+    row = PackageRow(
+        plan_row(
+            "com.google.android.apps.wellbeing",
+            "Digital Wellbeing: screen-time tracking",
+            "Screen-time dashboard and app timers",
+        ),
+        catalog,
+        show_english_note=False,
+        tr=Translator("en").tr,
+    )
+    qtbot.addWidget(row)
+
+    assert "Digital Wellbeing" in row.why_label.text()
+    assert "Bienestar digital" not in row.why_label.text()
+    assert "Screen-time dashboard" in row.breaks_label.text()
+    assert row.english_note_label.isHidden() is True
+
+
 def test_package_row_without_a_catalog_still_shows_english_and_the_note(qtbot):
     row = PackageRow(
         plan_row("com.example.unknown", "English reason", "English breakage"),
