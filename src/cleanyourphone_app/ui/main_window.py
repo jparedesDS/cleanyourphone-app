@@ -413,10 +413,6 @@ class MainWindow(QMainWindow):
         if not isinstance(summary, ApplySummary) or self.done_page is None:
             return
         self.done_page.show_summary(summary)
-        if summary.result.failed_batch is not None:
-            # The Apply failure screen has a "Deshacer todo" action; take the
-            # user straight to the undo preview instead of asking twice.
-            self.done_page.begin_undo()
 
     @property
     def current_page_name(self) -> str:

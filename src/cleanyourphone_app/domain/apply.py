@@ -171,8 +171,12 @@ class ApplyController:
                 if _action(row) in SELECTABLE_ACTIONS
             }
             batch = tuple(package for package in original if package in actionable)
-            if not batch:
+            if len(batch) != len(original):
+                # A package stopped being actionable. The subset can still be
+                # sent, but the run is partial: it must never report every
+                # selected package as applied.
                 skipped_any = True
+            if not batch:
                 self._emit(
                     on_progress,
                     ApplyProgress(

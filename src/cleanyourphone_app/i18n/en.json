@@ -170,7 +170,7 @@
   "done.undo_dry_run": "Summary before undoing",
   "done.undo_confirm": "Yes, undo everything",
   "done.undo_unavailable": "There is no backup available to undo.",
-  "done.dry_run_failed": "The undo summary could not be prepared. Nothing has been changed.",
+  "done.dry_run_failed": "The undo summary could not be prepared. Undo was not started; the phone was not changed by undo.",
   "done.undo_dry_run_empty": "The undo summary is empty.",
   "done.undo_failed": "Undo could not be completed from this phone's journal. The app did not retry automatically.",
   "done.undone": "Undone. Every change recorded for this phone was restored.",

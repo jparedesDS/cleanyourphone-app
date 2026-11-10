@@ -170,7 +170,7 @@
   "done.undo_dry_run": "Resumen antes de deshacer",
   "done.undo_confirm": "Sí, deshacer todo",
   "done.undo_unavailable": "No hay copia disponible para deshacer.",
-  "done.dry_run_failed": "No se pudo preparar el resumen de deshacer. No se ha cambiado nada.",
+  "done.dry_run_failed": "No se pudo preparar el resumen de deshacer. No se inició el deshacer; este intento no cambió el móvil.",
   "done.undo_dry_run_empty": "El resumen de deshacer está vacío.",
   "done.undo_failed": "No se pudo deshacer con el diario de este móvil. La app no lo ha reintentado automáticamente.",
   "done.undone": "Deshecho. Se restauraron todos los cambios registrados para este móvil.",

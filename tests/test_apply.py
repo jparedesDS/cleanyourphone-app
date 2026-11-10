@@ -178,6 +178,40 @@ def test_replan_removing_a_selected_package_prevents_it_from_being_disabled():
     assert cli.plan_calls == ["pixel-8", "pixel-8"]
 
 
+def test_a_replan_dropping_one_package_from_a_non_empty_batch_is_partial():
+    dropped = PlanData(
+        profile_id="pixel-8",
+        match=True,
+        verification="device",
+        auto_apply=True,
+        rows=(
+            row("DISABLE", "a"),
+            row("BLOCKED", "b"),
+            row("DISABLE", "c"),
+            row("DISABLE", "d"),
+            row("DISABLE", "e"),
+            row("DISABLE", "f"),
+        ),
+    )
+    cli = FakeApplyCli(plans=[dropped, plan("a", "b", "c", "d", "e", "f")])
+    cli.list_disabled_result = {"a"}
+    events: list[ApplyProgress] = []
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(
+        ("a", "b", "c", "d", "e", "f"),
+        "pixel-8",
+        on_progress=events.append,
+    )
+
+    assert cli.disable_calls == [("a", "c", "d", "e"), ("f",)]
+    assert "b" not in {package for batch in cli.disable_calls for package in batch}
+    assert result.completed is False
+    assert result.failed_batch is None
+    assert events[1].completed == ("a", "c", "d", "e")
+    assert events[3].completed == ("a", "c", "d", "e", "f")
+
+
 def test_restore_failure_offers_the_backup_without_silently_retrying():
     cli = FakeApplyCli()
     cli.restore_result = CliResult(("restore",), 1, "", "serial does not match")

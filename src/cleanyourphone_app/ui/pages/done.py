@@ -109,6 +109,12 @@ class DonePage(Page):
         self.status_label.setWordWrap(True)
         self.status_label.hide()
 
+        self.summary_warning_label = QLabel(self)
+        self.summary_warning_label.setObjectName("done_summary_warning")
+        self.summary_warning_label.setProperty("role", "error")
+        self.summary_warning_label.setWordWrap(True)
+        self.summary_warning_label.hide()
+
         self.error_label = QLabel(self)
         self.error_label.setObjectName("done_error_label")
         self.error_label.setProperty("role", "error")
@@ -228,6 +234,7 @@ class DonePage(Page):
         layout.addWidget(self.body_label)
         layout.addWidget(self.count_label)
         layout.addWidget(self.status_label)
+        layout.addWidget(self.summary_warning_label)
         layout.addWidget(self.error_label)
         layout.addWidget(self.remaining_caption)
         layout.addWidget(self.remaining_label)
@@ -264,6 +271,7 @@ class DonePage(Page):
         self.count_label.setText(
             self.tr("done.count", count=len(summary.applied))
         )
+        self.count_label.show()
         self.verified_label.setText(self.tr("done.verified"))
         self.verified_label.setVisible(
             isinstance(result.verify, dict)
@@ -272,6 +280,12 @@ class DonePage(Page):
         self._render_backup()
 
         if self._undo_done:
+            # The present-tense summary no longer describes the phone: undo
+            # restored it. Keep only the outcome, never a stale count or a
+            # "still disabled" list.
+            self.count_label.hide()
+            self.verified_label.hide()
+            self.summary_warning_label.hide()
             self.status_label.setText(self.tr(self._undo_status_key))
             self.status_label.show()
             self.error_label.hide()
@@ -283,18 +297,21 @@ class DonePage(Page):
         if result.completed:
             self.status_label.setText(self.tr("apply.complete"))
             self.status_label.show()
+            self.summary_warning_label.hide()
             self.error_label.hide()
             self.remaining_caption.hide()
             self.remaining_label.hide()
         elif failed:
             self.status_label.hide()
-            self.error_label.setText(self.tr("done.failed"))
-            self.error_label.show()
+            self.summary_warning_label.setText(self.tr("done.failed"))
+            self.summary_warning_label.show()
+            self.error_label.hide()
             self._render_remaining(result)
         else:
             self.status_label.hide()
-            self.error_label.setText(self.tr("apply.plan_changed"))
-            self.error_label.show()
+            self.summary_warning_label.setText(self.tr("apply.plan_changed"))
+            self.summary_warning_label.show()
+            self.error_label.hide()
             self._render_remaining(result)
 
         if summary.stopped:
@@ -302,6 +319,7 @@ class DonePage(Page):
                 self.tr("done.stopped", count=len(summary.applied))
             )
             self.status_label.show()
+            self.summary_warning_label.hide()
             self.error_label.hide()
             self.remaining_caption.hide()
             self.remaining_label.hide()
@@ -340,10 +358,6 @@ class DonePage(Page):
         if self._controller is None:
             self._controller = ApplyController(self._cli, backup=self.backup)
         return self._controller
-
-    def begin_undo(self) -> None:
-        """Open the undo preview from another page (for example after a failure)."""
-        self._start_preview()
 
     def _start_preview(self) -> None:
         if self._busy:
@@ -412,9 +426,7 @@ class DonePage(Page):
         if payload.restored:
             self._undo_done = True
             self._undo_status_key = "done.undone"
-            self.status_label.setText(self.tr(self._undo_status_key))
-            self.status_label.show()
-            self.error_label.hide()
+            self._render_summary()
             self.confirm_panel.hide()
             self.fallback_panel.hide()
             self.undo_button.hide()
@@ -427,9 +439,7 @@ class DonePage(Page):
         if isinstance(payload, UndoResult) and payload.restored:
             self._undo_done = True
             self._undo_status_key = "done.restored"
-            self.status_label.setText(self.tr(self._undo_status_key))
-            self.status_label.show()
-            self.error_label.hide()
+            self._render_summary()
             self.fallback_panel.hide()
             self.undo_button.hide()
             return
@@ -511,6 +521,7 @@ class DonePage(Page):
         self.remaining_caption.hide()
         self.remaining_label.hide()
         self.status_label.hide()
+        self.summary_warning_label.hide()
         self.verified_label.hide()
         self.backup_caption.hide()
         self.backup_label.clear()

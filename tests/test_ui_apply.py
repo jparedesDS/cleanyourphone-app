@@ -71,12 +71,22 @@ def backup_context(selected=("com.example.a", "com.example.b")) -> AppContext:
 class FakeApplyController:
     """Deterministic worker double that can pause inside a batch."""
 
-    def __init__(self, *, block_at: int | None = None, fail_result=None) -> None:
+    def __init__(
+        self,
+        *,
+        block_at: int | None = None,
+        fail_result=None,
+        drop: tuple[str, ...] = (),
+        force_completed: bool = False,
+    ) -> None:
         self.block_at = block_at
         self.fail_result = fail_result
+        self.drop = set(drop)
+        self.force_completed = force_completed
         self.run_calls: list[tuple[tuple[str, ...], str]] = []
         self.disabled: list[tuple[str, ...]] = []
         self.stopped = False
+        self.dropped = False
         self.batch_started = threading.Event()
         self.release = threading.Event()
 
@@ -85,17 +95,22 @@ class FakeApplyController:
         self.run_calls.append((selected, profile_id))
         batches = split_batches(selected)
         applied: list[str] = []
-        for index, batch in enumerate(batches, start=1):
+        for index, original in enumerate(batches, start=1):
             if should_stop is not None and should_stop():
                 self.stopped = True
                 break
-            self.disabled.append(tuple(batch))
+            batch = tuple(package for package in original if package not in self.drop)
+            if len(batch) != len(original):
+                self.dropped = True
+            if not batch:
+                continue
+            self.disabled.append(batch)
             if on_progress is not None:
                 on_progress(
                     ApplyProgress(
                         index,
                         len(batches),
-                        tuple(batch),
+                        batch,
                         tuple(applied),
                         "started",
                     )
@@ -109,7 +124,7 @@ class FakeApplyController:
                     ApplyProgress(
                         index,
                         len(batches),
-                        tuple(batch),
+                        batch,
                         tuple(applied),
                         "done",
                     )
@@ -117,7 +132,12 @@ class FakeApplyController:
             if self.fail_result is not None:
                 return self.fail_result
         return ApplyResult(
-            completed=not self.stopped and len(applied) == len(selected),
+            completed=self.force_completed
+            or (
+                not self.stopped
+                and not self.dropped
+                and len(applied) == len(selected)
+            ),
             verify={"checks": [dict(check) for check in PASS_CHECKS]},
         )
 
@@ -278,6 +298,58 @@ def test_stop_after_this_batch_stops_before_the_next_batch(qtbot):
     assert context.session.completed_batches == 1
 
 
+def test_partial_replan_never_counts_a_dropped_package(qtbot):
+    selected = (
+        "com.example.a",
+        "com.example.b",
+        "com.example.c",
+        "com.example.d",
+        "com.example.e",
+        "com.example.f",
+    )
+    context = review_context(selected)
+    controller = FakeApplyController(drop=("com.example.b",))
+    page = ApplyPage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show()
+
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.error_label.isVisibleTo(page), timeout=3000)
+
+    assert "com.example.b" not in {
+        package for batch in controller.disabled for package in batch
+    }
+    page.undo_button.click()
+    assert page.last_summary is not None
+    assert "com.example.b" not in page.last_summary.applied
+
+    done = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(done)
+    done.show_summary(page.last_summary)
+    done.show()
+
+    assert done.count_label.text() == "5 apps desactivadas"
+
+
+def test_a_completed_result_never_overwrites_applied_with_the_selection(qtbot):
+    selected = ("com.example.a", "com.example.b", "com.example.c")
+    context = review_context(selected)
+    controller = FakeApplyController(
+        drop=("com.example.b",),
+        force_completed=True,
+    )
+    page = ApplyPage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show()
+
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    assert page.last_summary is not None
+    assert page.last_summary.result.completed is True
+    assert page.last_summary.applied == ("com.example.a", "com.example.c")
+
+
 def test_failed_batch_shows_remaining_disabled_and_an_undo_action(qtbot):
     selected = ("com.example.a", "com.example.b", "com.example.c")
     context = review_context(selected)
@@ -387,6 +459,38 @@ def test_undo_failure_offers_restore_from_backup_without_retrying(qtbot):
     assert "Restaurado" in page.status_label.text()
 
 
+def test_successful_undo_clears_the_stale_remaining_state(qtbot):
+    context = review_context(("com.example.a", "com.example.b", "com.example.c"))
+    controller = FakeUndoController()
+    page = DonePage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show_summary(
+        make_summary(
+            completed=False,
+            applied=("com.example.a",),
+            selected=("com.example.a", "com.example.b", "com.example.c"),
+            failed_batch=("com.example.b", "com.example.c"),
+            remaining_disabled=("com.example.b",),
+        )
+    )
+    page.show()
+
+    assert page.remaining_label.isVisibleTo(page) is True
+
+    page.undo_button.click()
+    qtbot.waitUntil(lambda: page.confirm_panel.isVisibleTo(page), timeout=3000)
+    page.confirm_button.click()
+    qtbot.waitUntil(
+        lambda: controller.undo_calls == 1 and not page.busy, timeout=3000
+    )
+
+    assert "Deshecho" in page.status_label.text()
+    assert page.remaining_caption.isHidden() is True
+    assert page.remaining_label.isHidden() is True
+    assert page.count_label.isHidden() is True
+    assert page.summary_warning_label.isHidden() is True
+
+
 def test_stopped_summary_says_the_rest_was_not_changed(qtbot):
     context = review_context(("com.example.a", "com.example.b", "com.example.c"))
     page = DonePage(context, controller=FakeUndoController())
@@ -474,3 +578,68 @@ def test_main_window_registers_apply_and_done_and_blocks_close(qtbot):
 
     assert window.done_page.count_label.text() == "3 apps desactivadas"
     assert window.close() is True
+
+
+def test_preview_failure_keeps_the_failed_summary_and_scoped_copy(qtbot):
+    selected = ("com.example.a", "com.example.b", "com.example.c")
+    context = AppContext.fake(
+        translator=Translator("es"),
+        adb_info=make_info(),
+        device_lister=lambda _info: [],
+    )
+    window = MainWindow(context)
+    qtbot.addWidget(window)
+    window.show()
+    window.start_flow()
+
+    context.session.attach(SERIAL, Transport.USB)
+    context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.checked(probe(), "pixel-8")
+    context.session.backup_done(BACKUP)
+    context.session.set_selection(selected)
+    window.show_page("apply")
+
+    failure = ApplyResult(
+        completed=False,
+        failed_batch=("com.example.c",),
+        remaining_disabled=("com.example.b",),
+        rollback_verified=False,
+        verify={"checks": [{"check": "Home", "status": "FAIL", "detail": "no"}]},
+    )
+    window.apply_page._controller = FakeApplyController(fail_result=failure)
+    undo_controller = FakeUndoController(
+        preview_result=CliResult(
+            ("restore", "--dry-run"), 1, "", "journal unavailable"
+        )
+    )
+    window.done_page._controller = undo_controller
+
+    window.apply_page.apply_button.click()
+    qtbot.waitUntil(
+        lambda: window.apply_page.error_label.isVisibleTo(window.apply_page),
+        timeout=3000,
+    )
+    window.apply_page.undo_button.click()
+    qtbot.waitUntil(lambda: window.current_page_name == "done", timeout=3000)
+
+    done = window.done_page
+    assert undo_controller.preview_calls == 0
+    assert done.summary_warning_label.isVisibleTo(done) is True
+    assert done.remaining_label.isVisibleTo(done) is True
+    assert "com.example.b" in done.remaining_label.text()
+
+    done.undo_button.click()
+    qtbot.waitUntil(
+        lambda: done.error_label.isVisibleTo(done) and not done.busy,
+        timeout=3000,
+    )
+
+    assert undo_controller.preview_calls == 1
+    assert done.summary_warning_label.isVisibleTo(done) is True
+    assert done.remaining_label.isVisibleTo(done) is True
+    assert "com.example.b" in done.remaining_label.text()
+    assert done.fallback_panel.isVisibleTo(done) is True
+    text = done.error_label.text().lower()
+    assert "no se ha cambiado nada" not in text
+    assert "nothing has been changed" not in text
+    assert "deshacer" in text

@@ -299,7 +299,6 @@ class ApplyPage(Page):
 
         self._result = result
         if result.completed:
-            self._applied = tuple(self._selected)
             self._finish_session()
             self._finish_done(stopped=False)
             return
