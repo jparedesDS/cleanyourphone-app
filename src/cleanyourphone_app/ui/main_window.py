@@ -26,13 +26,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cleanyourphone_app.domain.apply import ApplySummary
 from cleanyourphone_app.domain.session import SessionError
 from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
 from cleanyourphone_app.services.logging import LOGGER_NAME
+from cleanyourphone_app.ui.pages.apply import ApplyPage
 from cleanyourphone_app.ui.pages.backup import BackupPage
 from cleanyourphone_app.ui.pages.blocked import SAFETY_DOCS_URL, BlockedPage
 from cleanyourphone_app.ui.pages.check import CheckPage
 from cleanyourphone_app.ui.pages.connect import ConnectPage, transport_for
+from cleanyourphone_app.ui.pages.done import DonePage
 from cleanyourphone_app.ui.pages.review import ReviewPage
 from cleanyourphone_app.ui.pages.setup import SetupPage
 from cleanyourphone_app.ui.pages.welcome import WelcomePage
@@ -131,6 +134,8 @@ class MainWindow(QMainWindow):
         self.check_page: CheckPage | None = None
         self.backup_page: BackupPage | None = None
         self.review_page: ReviewPage | None = None
+        self.apply_page: ApplyPage | None = None
+        self.done_page: DonePage | None = None
         self.blocked_page: BlockedPage | None = None
 
         self.setObjectName("MainWindow")
@@ -264,6 +269,13 @@ class MainWindow(QMainWindow):
         self.review_page = ReviewPage(self.context)
         self.register_page("review", self.review_page)
 
+        self.apply_page = ApplyPage(self.context)
+        self.apply_page.completed.connect(self._present_done)
+        self.register_page("apply", self.apply_page)
+
+        self.done_page = DonePage(self.context)
+        self.register_page("done", self.done_page)
+
         self.blocked_page = BlockedPage(self.context)
         self.blocked_page.restart_requested.connect(self._restart_after_block)
         self.register_page("blocked", self.blocked_page)
@@ -387,10 +399,24 @@ class MainWindow(QMainWindow):
             return
         if self.check_page is not None:
             self.check_page.reset()
-        for page in (self.backup_page, self.review_page):
+        for page in (
+            self.backup_page,
+            self.review_page,
+            self.apply_page,
+            self.done_page,
+        ):
             reset = getattr(page, "reset", None)
             if callable(reset):
                 reset()
+
+    def _present_done(self, summary: object) -> None:
+        if not isinstance(summary, ApplySummary) or self.done_page is None:
+            return
+        self.done_page.show_summary(summary)
+        if summary.result.failed_batch is not None:
+            # The Apply failure screen has a "Deshacer todo" action; take the
+            # user straight to the undo preview instead of asking twice.
+            self.done_page.begin_undo()
 
     @property
     def current_page_name(self) -> str:
@@ -427,17 +453,32 @@ class MainWindow(QMainWindow):
         self.retranslate()
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        if self._writes_in_flight():
+            self.statusBar().showMessage(
+                self.context.translator.tr("apply.do_not_close")
+            )
+            event.ignore()
+            return
+
         for page in (
             self.setup_page,
             self.connect_page,
             self.check_page,
             self.backup_page,
             self.review_page,
+            self.apply_page,
+            self.done_page,
         ):
             shutdown = getattr(page, "shutdown", None)
             if callable(shutdown):
                 shutdown()
         super().closeEvent(event)
+
+    def _writes_in_flight(self) -> bool:
+        return bool(
+            (self.apply_page is not None and self.apply_page.close_blocked)
+            or (self.done_page is not None and self.done_page.close_blocked)
+        )
 
     def retranslate(self) -> None:
         tr = self.context.translator.tr

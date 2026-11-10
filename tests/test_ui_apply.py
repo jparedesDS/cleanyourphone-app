@@ -1,0 +1,476 @@
+"""ApplyPage and DonePage: visible batch progress and an honest undo path."""
+
+from __future__ import annotations
+
+import threading
+from pathlib import Path
+
+from cleanyourphone_app.domain.apply import (
+    ApplyProgress,
+    ApplyResult,
+    ApplySummary,
+    UndoResult,
+)
+from cleanyourphone_app.domain.batches import split_batches
+from cleanyourphone_app.domain.models import ProbeData
+from cleanyourphone_app.domain.session import SessionState, Transport
+from cleanyourphone_app.i18n.translator import Translator
+from cleanyourphone_app.services.adb import AdbInfo
+from cleanyourphone_app.services.cli import CliResult
+from cleanyourphone_app.ui.app import AppContext
+from cleanyourphone_app.ui.main_window import MainWindow
+from cleanyourphone_app.ui.pages.apply import ApplyPage
+from cleanyourphone_app.ui.pages.done import DonePage
+
+SERIAL = "usb-1"
+FINGERPRINT = "google/shiba/shiba:14/AP1A.240505.004/11228896:user/release-keys"
+BACKUP = Path("C:/backup/20260101_120000")
+PASS_CHECKS = [{"check": "Device", "status": "PASS", "detail": "Pixel 8"}]
+
+
+def probe() -> ProbeData:
+    return ProbeData(
+        brand="Google",
+        model="Pixel 8",
+        device="shiba",
+        android="14",
+        sdk=34,
+        build="AP1A.240505.004",
+        fingerprint=FINGERPRINT,
+        managed=False,
+        users=1,
+        is_tv=False,
+        battery={"level": 80},
+        profiles=("pixel-8",),
+        auto_apply_profiles=("pixel-8",),
+    )
+
+
+def review_context(
+    selected=("com.example.a", "com.example.b"),
+    translator: Translator | None = None,
+) -> AppContext:
+    context = AppContext.fake(translator=translator or Translator("es"))
+    context.session.attach(SERIAL, Transport.USB)
+    context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.checked(probe(), "pixel-8")
+    context.session.backup_done(BACKUP)
+    context.session.set_selection(selected)
+    return context
+
+
+def backup_context(selected=("com.example.a", "com.example.b")) -> AppContext:
+    context = AppContext.fake(translator=Translator("es"))
+    context.session.attach(SERIAL, Transport.USB)
+    context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.checked(probe(), "pixel-8")
+    context.session.set_selection(selected)
+    return context
+
+
+class FakeApplyController:
+    """Deterministic worker double that can pause inside a batch."""
+
+    def __init__(self, *, block_at: int | None = None, fail_result=None) -> None:
+        self.block_at = block_at
+        self.fail_result = fail_result
+        self.run_calls: list[tuple[tuple[str, ...], str]] = []
+        self.disabled: list[tuple[str, ...]] = []
+        self.stopped = False
+        self.batch_started = threading.Event()
+        self.release = threading.Event()
+
+    def run(self, selected, profile_id, on_progress=None, should_stop=None):
+        selected = tuple(selected)
+        self.run_calls.append((selected, profile_id))
+        batches = split_batches(selected)
+        applied: list[str] = []
+        for index, batch in enumerate(batches, start=1):
+            if should_stop is not None and should_stop():
+                self.stopped = True
+                break
+            self.disabled.append(tuple(batch))
+            if on_progress is not None:
+                on_progress(
+                    ApplyProgress(
+                        index,
+                        len(batches),
+                        tuple(batch),
+                        tuple(applied),
+                        "started",
+                    )
+                )
+            if self.block_at == index:
+                self.batch_started.set()
+                self.release.wait(5)
+            applied.extend(batch)
+            if on_progress is not None:
+                on_progress(
+                    ApplyProgress(
+                        index,
+                        len(batches),
+                        tuple(batch),
+                        tuple(applied),
+                        "done",
+                    )
+                )
+            if self.fail_result is not None:
+                return self.fail_result
+        return ApplyResult(
+            completed=not self.stopped and len(applied) == len(selected),
+            verify={"checks": [dict(check) for check in PASS_CHECKS]},
+        )
+
+
+class FakeUndoController:
+    def __init__(
+        self,
+        *,
+        preview_result: CliResult | None = None,
+        undo_result: UndoResult | None = None,
+        fallback_result: UndoResult | None = None,
+    ) -> None:
+        self.backup = BACKUP
+        self.preview_calls = 0
+        self.undo_calls = 0
+        self.restore_calls: list[Path] = []
+        self.preview_result = preview_result or CliResult(
+            ("restore", "--dry-run"),
+            0,
+            "WOULD ENABLE com.example.disabled\nDry run. Nothing changed.",
+            "",
+        )
+        self.undo_result = undo_result or UndoResult(
+            restored=True,
+            dry_run="WOULD ENABLE com.example.disabled",
+        )
+        self.fallback_result = fallback_result or UndoResult(
+            restored=True, used_backup=True
+        )
+
+    def preview_undo(self):
+        self.preview_calls += 1
+        return self.preview_result
+
+    def undo(self):
+        self.undo_calls += 1
+        return self.undo_result
+
+    def restore_from_backup(self):
+        self.restore_calls.append(BACKUP)
+        return self.fallback_result
+
+
+def make_summary(
+    *,
+    completed: bool = True,
+    applied=("com.example.a", "com.example.b", "com.example.c"),
+    selected=None,
+    failed_batch=None,
+    remaining_disabled=(),
+    stopped: bool = False,
+    verify=None,
+) -> ApplySummary:
+    selected = tuple(selected) if selected is not None else tuple(applied)
+    result = ApplyResult(
+        completed=completed,
+        failed_batch=failed_batch,
+        remaining_disabled=tuple(remaining_disabled),
+        rollback_verified=False,
+        verify=verify if verify is not None else {"checks": [dict(PASS_CHECKS[0])]},
+    )
+    return ApplySummary(
+        result=result,
+        applied=tuple(applied),
+        selected=selected,
+        stopped=stopped,
+    )
+
+
+# ---------------------------------------------------------------------------
+# ApplyPage
+# ---------------------------------------------------------------------------
+
+
+def test_apply_button_is_disabled_without_a_selection_or_a_backup(qtbot):
+    without_selection = ApplyPage(review_context(selected=()))
+    qtbot.addWidget(without_selection)
+    without_selection.show()
+    assert without_selection.apply_button.isEnabled() is False
+
+    without_backup = ApplyPage(backup_context(("com.example.a",)))
+    qtbot.addWidget(without_backup)
+    without_backup.show()
+    assert without_backup.apply_button.isEnabled() is False
+
+    without_backup.apply_button.click()
+    assert without_backup.context.session.state is SessionState.BACKUP
+    assert without_backup.context.session.selected_packages == ("com.example.a",)
+
+
+def test_apply_starts_once_and_shows_batch_two_of_three(qtbot):
+    selected = tuple(f"com.example.p{index}" for index in range(1, 13))
+    context = review_context(selected)
+    start_calls: list[bool] = []
+    original_start = context.session.start_apply
+
+    def counting_start() -> None:
+        start_calls.append(True)
+        original_start()
+
+    context.session.start_apply = counting_start  # type: ignore[method-assign]
+    controller = FakeApplyController(block_at=2)
+    page = ApplyPage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show()
+
+    assert context.session.state is SessionState.REVIEW
+    assert page.apply_button.isEnabled() is True
+    page.apply_button.click()
+
+    assert context.session.state is SessionState.APPLYING
+    qtbot.waitUntil(controller.batch_started.is_set, timeout=3000)
+    qtbot.waitUntil(lambda: page.batch_label.text() == "Lote 2 de 3", timeout=3000)
+
+    assert page.progress_bar.maximum() == 3
+    assert page.progress_bar.value() == 1
+    texts = [
+        page.package_list.item(index).text()
+        for index in range(page.package_list.count())
+    ]
+    assert "com.example.p1" in texts
+    assert "com.example.p12" in texts
+
+    page.apply_button.click()
+    assert len(controller.run_calls) == 1
+    assert len(start_calls) == 1
+
+    controller.release.set()
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+    assert context.session.state is SessionState.DONE
+    assert context.session.completed_batches == 3
+
+
+def test_stop_after_this_batch_stops_before_the_next_batch(qtbot):
+    selected = tuple(f"com.example.p{index}" for index in range(1, 13))
+    context = review_context(selected)
+    controller = FakeApplyController(block_at=1)
+    page = ApplyPage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show()
+    page.apply_button.click()
+
+    qtbot.waitUntil(controller.batch_started.is_set, timeout=3000)
+    assert page.stop_button.isVisibleTo(page) is True
+    assert page.stop_button.text() == "Detener al terminar este lote"
+
+    page.stop_button.click()
+    controller.release.set()
+
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    assert controller.stopped is True
+    assert len(controller.disabled) == 1
+    assert controller.disabled[0] == tuple(split_batches(selected)[0])
+    assert page.last_summary is not None
+    assert page.last_summary.stopped is True
+    assert context.session.state is SessionState.DONE
+    assert context.session.completed_batches == 1
+
+
+def test_failed_batch_shows_remaining_disabled_and_an_undo_action(qtbot):
+    selected = ("com.example.a", "com.example.b", "com.example.c")
+    context = review_context(selected)
+    failure = ApplyResult(
+        completed=False,
+        failed_batch=("com.example.c",),
+        remaining_disabled=("com.example.a", "com.example.b"),
+        rollback_verified=False,
+        verify={"checks": [{"check": "Home", "status": "FAIL", "detail": "no"}]},
+    )
+    controller = FakeApplyController(fail_result=failure)
+    page = ApplyPage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show()
+
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.error_label.isVisibleTo(page), timeout=3000)
+
+    assert page.next_page is None
+    assert "com.example.a" in page.remaining_label.text()
+    assert "com.example.b" in page.remaining_label.text()
+    assert page.undo_button.isVisibleTo(page) is True
+    assert page.undo_button.text() == "Deshacer todo"
+
+    page.undo_button.click()
+
+    assert page.next_page == "done"
+    assert page.last_summary is not None
+    assert page.last_summary.result is failure
+
+
+# ---------------------------------------------------------------------------
+# DonePage
+# ---------------------------------------------------------------------------
+
+
+def test_done_shows_the_count_the_backup_path_and_undo(qtbot):
+    context = review_context(
+        ("com.example.a", "com.example.b", "com.example.c"),
+    )
+    page = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(page)
+
+    page.show_summary(make_summary())
+    page.show()
+
+    assert page.count_label.text() == "3 apps desactivadas"
+    assert str(BACKUP) in page.backup_label.text()
+    assert page.undo_button.text() == "Deshacer todo"
+    assert page.undo_button.isVisibleTo(page) is True
+
+
+def test_undo_asks_for_confirmation_and_shows_the_dry_run_summary(qtbot):
+    context = review_context()
+    controller = FakeUndoController()
+    page = DonePage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show_summary(make_summary())
+    page.show()
+
+    page.undo_button.click()
+    qtbot.waitUntil(lambda: page.confirm_panel.isVisibleTo(page), timeout=3000)
+
+    assert controller.preview_calls == 1
+    assert controller.undo_calls == 0
+    assert "WOULD ENABLE com.example.disabled" in page.dry_run_output.text()
+    assert page.dry_run_output.isVisibleTo(page) is True
+    assert "sesiones anteriores" in page.confirm_body_label.text()
+
+    page.confirm_button.click()
+    qtbot.waitUntil(
+        lambda: controller.undo_calls == 1 and not page.busy, timeout=3000
+    )
+
+    assert "Deshecho" in page.status_label.text()
+    assert page.confirm_panel.isHidden() is True
+
+
+def test_undo_failure_offers_restore_from_backup_without_retrying(qtbot):
+    context = review_context()
+    controller = FakeUndoController(
+        undo_result=UndoResult(
+            restored=False,
+            dry_run="WOULD ENABLE com.example.disabled",
+            fallback_backup=BACKUP,
+        )
+    )
+    page = DonePage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show_summary(make_summary())
+    page.show()
+
+    page.undo_button.click()
+    qtbot.waitUntil(lambda: page.confirm_panel.isVisibleTo(page), timeout=3000)
+    page.confirm_button.click()
+    qtbot.waitUntil(lambda: page.fallback_panel.isVisibleTo(page), timeout=3000)
+
+    assert controller.undo_calls == 1
+    assert controller.restore_calls == []
+    assert "copia" in page.fallback_warning_label.text()
+
+    page.fallback_button.click()
+    qtbot.waitUntil(lambda: controller.restore_calls and not page.busy, timeout=3000)
+
+    assert controller.undo_calls == 1
+    assert controller.restore_calls == [BACKUP]
+    assert "Restaurado" in page.status_label.text()
+
+
+def test_stopped_summary_says_the_rest_was_not_changed(qtbot):
+    context = review_context(("com.example.a", "com.example.b", "com.example.c"))
+    page = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(page)
+    page.show_summary(
+        make_summary(
+            completed=False,
+            applied=("com.example.a", "com.example.b"),
+            selected=("com.example.a", "com.example.b", "com.example.c"),
+            stopped=True,
+        )
+    )
+    page.show()
+
+    assert "2 apps desactivadas" in page.count_label.text()
+    assert "no se han cambiado" in page.status_label.text()
+    assert page.remaining_label.isHidden() is True
+
+
+def test_failed_summary_keeps_the_real_remaining_packages_visible(qtbot):
+    context = review_context(("com.example.a", "com.example.b", "com.example.c"))
+    page = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(page)
+    page.show_summary(
+        make_summary(
+            completed=False,
+            applied=("com.example.a",),
+            selected=("com.example.a", "com.example.b", "com.example.c"),
+            failed_batch=("com.example.b", "com.example.c"),
+            remaining_disabled=("com.example.b",),
+        )
+    )
+    page.show()
+
+    assert "com.example.b" in page.remaining_label.text()
+    assert "no se ha cambiado nada" not in page.status_label.text().lower()
+    assert page.undo_button.isVisibleTo(page) is True
+
+
+# ---------------------------------------------------------------------------
+# Shell wiring
+# ---------------------------------------------------------------------------
+
+
+def make_info() -> AdbInfo:
+    return AdbInfo(
+        path=Path("C:/tools/adb.exe"),
+        version=(37, 0, 1),
+        version_text="Version 37.0.1",
+    )
+
+
+def test_main_window_registers_apply_and_done_and_blocks_close(qtbot):
+    selected = tuple(f"com.example.p{index}" for index in range(1, 4))
+    context = AppContext.fake(
+        translator=Translator("es"),
+        adb_info=make_info(),
+        device_lister=lambda _info: [],
+    )
+    window = MainWindow(context)
+    qtbot.addWidget(window)
+    window.show()
+    window.start_flow()
+
+    context.session.attach(SERIAL, Transport.USB)
+    context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.checked(probe(), "pixel-8")
+    context.session.backup_done(BACKUP)
+    context.session.set_selection(selected)
+    window.show_page("apply")
+
+    assert isinstance(window.apply_page, ApplyPage)
+    assert isinstance(window.done_page, DonePage)
+
+    controller = FakeApplyController(block_at=1)
+    window.apply_page._controller = controller
+    window.apply_page.apply_button.click()
+    qtbot.waitUntil(controller.batch_started.is_set, timeout=3000)
+
+    assert window.close() is False
+    assert window.isVisible() is True
+
+    controller.release.set()
+    qtbot.waitUntil(lambda: window.current_page_name == "done", timeout=3000)
+
+    assert window.done_page.count_label.text() == "3 apps desactivadas"
+    assert window.close() is True

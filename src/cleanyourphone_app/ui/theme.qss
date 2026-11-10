@@ -95,6 +95,13 @@ QFrame#PackageRow {
     border-radius: 8px;
 }
 
+QFrame#UndoConfirm,
+QFrame#UndoFallback {
+    background-color: #1B1C21;
+    border: 1px solid #A78BFA;
+    border-radius: 8px;
+}
+
 QFrame#PackageRow:hover {
     border-color: #A78BFA;
 }
