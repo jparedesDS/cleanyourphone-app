@@ -1,0 +1,52 @@
+"""The supported-device decision, kept in one place so every screen agrees."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .models import ProbeData
+
+SKILL_URL = "https://jparedesds.github.io/cleanyourphone-web/"
+
+MIN_SDK = 26
+
+
+@dataclass(frozen=True)
+class SupportedDecision:
+    allowed: bool
+    reason: str
+    profile_ids: tuple[str, ...] = ()
+    link: str | None = None
+
+
+def decide_support(probe: ProbeData) -> SupportedDecision:
+    """Return whether the app may change packages on this phone.
+
+    ``reason`` is a stable token for the UI: ``tv``, ``managed_unknown``,
+    ``managed``, ``users_unknown``, ``multi_user``, ``android_too_old`` or
+    ``no_device_profile``. Only ``no_device_profile`` links to the skill site;
+    the other blockers are safety rules the skill cannot bypass either.
+    """
+    if probe.is_tv:
+        return SupportedDecision(allowed=False, reason="tv")
+    if probe.managed is None:
+        return SupportedDecision(allowed=False, reason="managed_unknown")
+    if probe.managed:
+        return SupportedDecision(allowed=False, reason="managed")
+    if probe.users is None:
+        return SupportedDecision(allowed=False, reason="users_unknown")
+    if probe.users != 1:
+        return SupportedDecision(allowed=False, reason="multi_user")
+    if probe.sdk < MIN_SDK:
+        return SupportedDecision(allowed=False, reason="android_too_old")
+    if not probe.auto_apply_profiles:
+        return SupportedDecision(
+            allowed=False,
+            reason="no_device_profile",
+            link=SKILL_URL,
+        )
+    return SupportedDecision(
+        allowed=True,
+        reason="supported",
+        profile_ids=tuple(probe.auto_apply_profiles),
+    )
