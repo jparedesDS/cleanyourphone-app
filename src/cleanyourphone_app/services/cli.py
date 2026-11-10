@@ -18,6 +18,9 @@ from cleanyourphone_app.domain.models import PlanData, ProbeData
 
 _T = TypeVar("_T")
 _STDERR_TAIL = 500
+# The app is a windowed executable, so a console-subsystem sidecar would spawn
+# a fresh console window for every call without this flag.
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 
 
 @dataclass(frozen=True)
@@ -166,6 +169,7 @@ class CliClient:
                 env=self._env,
                 timeout=timeout,
                 check=False,
+                creationflags=_NO_WINDOW,
             )
         except subprocess.TimeoutExpired as exc:
             raise CliError(

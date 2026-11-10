@@ -1,9 +1,12 @@
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
+from cleanyourphone_app.services import cli as cli_module
 from cleanyourphone_app.services.cli import (
     CliClient,
     CliError,
@@ -351,6 +354,26 @@ def test_missing_executable_raises_cli_error(tmp_path):
     client = CliClient([str(tmp_path / "does-not-exist.exe")])
     with pytest.raises(CliError):
         client.run(["probe"])
+
+
+def test_sidecar_subprocess_uses_create_no_window(monkeypatch):
+    calls: list[tuple[tuple, dict]] = []
+
+    def fake_run(*args, **kwargs):
+        calls.append((args, kwargs))
+        return subprocess.CompletedProcess(
+            args=args[0], returncode=0, stdout="", stderr=""
+        )
+
+    monkeypatch.setattr(cli_module.subprocess, "run", fake_run)
+    client = CliClient(["cleanyourphone"])
+
+    result = client.run(["probe"])
+
+    assert result.ok
+    assert len(calls) == 1
+    expected = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+    assert calls[0][1]["creationflags"] == expected
 
 
 def test_empty_command_is_rejected():

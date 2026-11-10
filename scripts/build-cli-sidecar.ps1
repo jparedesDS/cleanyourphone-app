@@ -11,8 +11,8 @@
         resources/profiles/                 (the pinned profile catalog)
 
     The frozen sidecar is smoke-tested with --version and validate before the
-    script succeeds. It is a console program; the app starts it without a
-    visible window.
+    script succeeds. It is a console-subsystem program; the app launches every
+    sidecar call with CREATE_NO_WINDOW so no console window flashes.
 
 .PARAMETER CliVersion
     Git tag of the CLI to build. The app ships v0.2.2.
