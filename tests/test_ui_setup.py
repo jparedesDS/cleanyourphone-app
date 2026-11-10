@@ -5,6 +5,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QFileDialog, QPushButton
 
+from cleanyourphone_app.domain.support import CONNECT_GUIDE_URL
 from cleanyourphone_app.i18n.translator import Translator
 from cleanyourphone_app.services.adb import AdbInfo
 from cleanyourphone_app.services.downloads import DownloadCancelled, DownloadError
@@ -142,6 +143,9 @@ def test_setup_page_shows_download_terms_consent_and_manual_option(qtbot, tmp_pa
     assert ANDROID_SDK_TERMS_URL in page.terms_label.text()
     assert tr("setup.terms_link") in page.terms_label.text()
     assert page.terms_label.openExternalLinks() is True
+    assert CONNECT_GUIDE_URL in page.help_label.text()
+    assert tr("setup.help") in page.help_label.text()
+    assert page.help_label.openExternalLinks() is True
 
 
 def test_download_stays_disabled_until_consent(qtbot, tmp_path):

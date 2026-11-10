@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from .models import ProbeData
 
 SKILL_URL = "https://jparedesds.github.io/cleanyourphone-web/"
+CONNECT_GUIDE_URL = (
+    "https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md"
+)
 
 MIN_SDK = 26
 

@@ -16,16 +16,20 @@ from PySide6.QtCore import QRegularExpression, Qt
 from PySide6.QtGui import QRegularExpressionValidator
 from PySide6.QtWidgets import (
     QComboBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from cleanyourphone_app.domain.session import SessionError, Transport
+from cleanyourphone_app.domain.support import CONNECT_GUIDE_URL
 from cleanyourphone_app.services.adb import AdbInfo, DeviceEntry
 from cleanyourphone_app.services.adb_wifi import (
     MdnsService,
@@ -89,9 +93,23 @@ class ConnectPage(Page):
     # ------------------------------------------------------------------ build
 
     def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(52, 44, 52, 44)
-        layout.setSpacing(16)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        self.scroll = QScrollArea(self)
+        self.scroll.setObjectName("connect_scroll")
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+
+        content = QWidget(self.scroll)
+        content.setObjectName("connect_content")
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(52, 26, 52, 26)
+        layout.setSpacing(10)
 
         self.title_label = QLabel(self)
         self.title_label.setProperty("role", "title")
@@ -100,6 +118,15 @@ class ConnectPage(Page):
         self.body_label = QLabel(self)
         self.body_label.setProperty("role", "body")
         self.body_label.setWordWrap(True)
+
+        self.help_label = QLabel(self)
+        self.help_label.setProperty("role", "muted")
+        self.help_label.setWordWrap(True)
+        self.help_label.setTextFormat(Qt.TextFormat.RichText)
+        self.help_label.setOpenExternalLinks(True)
+        self.help_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+        )
 
         self.tabs = QTabWidget(self)
         self.tabs.setObjectName("ConnectTabs")
@@ -140,16 +167,33 @@ class ConnectPage(Page):
         failure_row.addWidget(self.usb_fallback_button)
         failure_row.addStretch(1)
 
+        for label in (
+            self.body_label,
+            self.help_label,
+            self.wifi_steps_label,
+            self.usb_steps_label,
+            self.busy_label,
+            self.error_label,
+            self.success_label,
+        ):
+            label.setMinimumWidth(0)
+            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+
         layout.addWidget(self.title_label)
         layout.addWidget(self.body_label)
+        layout.addWidget(self.help_label)
         layout.addWidget(self.tabs, 1)
         layout.addWidget(self.busy_label)
         layout.addWidget(self.error_label)
         layout.addWidget(self.success_label)
         layout.addLayout(failure_row)
 
+        self.scroll.setWidget(content)
+        outer.addWidget(self.scroll)
+
     def _build_wifi_tab(self) -> QWidget:
         tab = QWidget(self)
+        tab.setObjectName("ConnectWifiTab")
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(12)
@@ -161,7 +205,6 @@ class ConnectPage(Page):
         self.ip_label = QLabel(tab)
         self.ip_field = QLineEdit(tab)
         self.ip_field.setObjectName("pairing_ip")
-        self.ip_field.setPlaceholderText("192.168.1.42:37123")
 
         self.code_label = QLabel(tab)
         self.code_field = QLineEdit(tab)
@@ -201,6 +244,7 @@ class ConnectPage(Page):
 
     def _build_usb_tab(self) -> QWidget:
         tab = QWidget(self)
+        tab.setObjectName("ConnectUsbTab")
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(12)
@@ -526,11 +570,16 @@ class ConnectPage(Page):
     def retranslate(self) -> None:
         self.title_label.setText(self.tr("connect.title"))
         self.body_label.setText(self.tr("connect.body"))
+        self.help_label.setText(
+            f'<a href="{CONNECT_GUIDE_URL}" style="color:#A78BFA;">'
+            f"{self.tr('connect.help')}</a>"
+        )
         self.tabs.setTabText(0, self.tr("connect.wifi_title"))
         self.tabs.setTabText(1, self.tr("connect.usb_title"))
 
         self.wifi_steps_label.setText(self.tr("connect.wifi_steps"))
         self.ip_label.setText(self.tr("connect.pairing_ip"))
+        self.ip_field.setPlaceholderText(self.tr("connect.pairing_ip_placeholder"))
         self.code_label.setText(self.tr("connect.pairing_code"))
         self.discover_button.setText(self.tr("connect.discover"))
         self.connect_button.setText(self.tr("connect.connect"))

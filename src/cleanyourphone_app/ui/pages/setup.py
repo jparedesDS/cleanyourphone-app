@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from cleanyourphone_app.domain.support import CONNECT_GUIDE_URL
 from cleanyourphone_app.services.downloads import DownloadCancelled, DownloadError
 from cleanyourphone_app.ui.pages.base import Page
 from cleanyourphone_app.ui.workers import BackgroundCall
@@ -108,6 +109,15 @@ class SetupPage(Page):
         buttons.addWidget(self.have_adb_button)
         buttons.addStretch(1)
 
+        self.help_label = QLabel(self)
+        self.help_label.setProperty("role", "muted")
+        self.help_label.setWordWrap(True)
+        self.help_label.setTextFormat(Qt.TextFormat.RichText)
+        self.help_label.setOpenExternalLinks(True)
+        self.help_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+        )
+
         self.offline_label = QLabel(self)
         self.offline_label.setProperty("role", "muted")
         self.offline_label.setWordWrap(True)
@@ -125,6 +135,7 @@ class SetupPage(Page):
         for label in (
             self.body_label,
             self.terms_label,
+            self.help_label,
             self.offline_label,
             self.status_label,
             self.error_label,
@@ -137,6 +148,7 @@ class SetupPage(Page):
         layout.addWidget(self.terms_label)
         layout.addWidget(self.consent_checkbox)
         layout.addLayout(buttons)
+        layout.addWidget(self.help_label)
         layout.addWidget(self.offline_label)
         layout.addWidget(self.status_label)
         layout.addWidget(self.error_label)
@@ -311,6 +323,10 @@ class SetupPage(Page):
         self.consent_checkbox.setText(self.tr("setup.consent"))
         self.download_button.setText(self.tr("setup.download"))
         self.have_adb_button.setText(self.tr("setup.have_adb"))
+        self.help_label.setText(
+            f'<a href="{CONNECT_GUIDE_URL}" style="color:#A78BFA;">'
+            f"{self.tr('setup.help')}</a>"
+        )
         self.offline_label.setText(self.tr("setup.offline"))
         if self._error_key is not None:
             self.error_label.setText(self.tr(self._error_key))

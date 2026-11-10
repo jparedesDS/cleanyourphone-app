@@ -5,6 +5,7 @@ import threading
 from pathlib import Path
 
 from cleanyourphone_app.domain.session import SessionState, Transport
+from cleanyourphone_app.domain.support import CONNECT_GUIDE_URL
 from cleanyourphone_app.i18n.translator import Translator
 from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
 from cleanyourphone_app.services.adb_wifi import MdnsService, MdnsServices, WifiError
@@ -169,6 +170,9 @@ def test_wifi_choice_opens_the_pairing_form(qtbot, tmp_path):
     assert page.code_field.maxLength() == 6
     assert page.discover_button.text() == "Buscar automáticamente"
     assert page.discover_button.text() == context.translator.tr("connect.discover")
+    assert CONNECT_GUIDE_URL in page.help_label.text()
+    assert context.translator.tr("connect.help") in page.help_label.text()
+    assert page.help_label.openExternalLinks() is True
 
 
 def test_usb_choice_opens_the_usb_instructions(qtbot, tmp_path):

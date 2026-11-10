@@ -11,8 +11,8 @@ CATALOG_DIR = (
 
 
 def test_translation_keys_match():
-    en = json.loads(Path("src/cleanyourphone_app/i18n/en.json").read_text())
-    es = json.loads(Path("src/cleanyourphone_app/i18n/es.json").read_text())
+    en = json.loads((CATALOG_DIR / "en.json").read_text(encoding="utf-8"))
+    es = json.loads((CATALOG_DIR / "es.json").read_text(encoding="utf-8"))
     assert en.keys() == es.keys()
 
 

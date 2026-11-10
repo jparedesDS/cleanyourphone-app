@@ -17,6 +17,39 @@ QLabel {
     background-color: transparent;
 }
 
+QTabWidget::pane {
+    background-color: #121316;
+    border: 1px solid #1B1C21;
+    border-radius: 8px;
+    top: -1px;
+}
+
+QTabBar::tab {
+    background-color: #1B1C21;
+    color: #A19E96;
+    border: 1px solid #1B1C21;
+    border-bottom: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 8px 18px;
+    margin-right: 4px;
+}
+
+QTabBar::tab:hover {
+    color: #F3F1EC;
+}
+
+QTabBar::tab:selected {
+    background-color: #A78BFA;
+    color: #121316;
+    font-weight: 600;
+}
+
+QWidget#ConnectWifiTab,
+QWidget#ConnectUsbTab {
+    background-color: #121316;
+}
+
 QLabel[role="brand"] {
     color: #F3F1EC;
     font-size: 18px;
