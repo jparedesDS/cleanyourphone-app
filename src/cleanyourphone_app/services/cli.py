@@ -193,7 +193,9 @@ def _dns_check_payload(payload: Any) -> dict[str, Any]:
         if not normalized[key].strip():
             raise ValueError(f"dns check field {key!r} must be a non-empty string")
 
-    blocked = check.get("ad_blocked")
+    if "ad_blocked" not in check:
+        raise ValueError("dns check field 'ad_blocked' is missing")
+    blocked = check["ad_blocked"]
     if blocked is not None and not isinstance(blocked, bool):
         raise ValueError("dns check field 'ad_blocked' must be true, false or null")
     online = check.get("online")

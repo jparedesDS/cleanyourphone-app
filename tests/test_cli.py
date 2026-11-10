@@ -336,6 +336,31 @@ def test_dns_check_rejects_a_malformed_payload(base_env):
         client.dns_check()
 
 
+def test_dns_check_keeps_an_explicit_null_blocked_state(base_env):
+    payload = json.dumps(
+        dns_check_payload(ad_ip="", ad_state="unknown", ad_blocked=None)
+    )
+    client = make_client(
+        base_env,
+        FAKE_CLI_DNS_CHECK_EXIT="1",
+        FAKE_CLI_DNS_CHECK_JSON=payload,
+    )
+    result = client.dns_check()
+    assert result["ad_blocked"] is None
+    assert result["online"] is True
+
+
+def test_dns_check_rejects_a_missing_blocked_key(base_env):
+    incomplete = dns_check_payload()
+    incomplete.pop("ad_blocked")
+    client = make_client(
+        base_env,
+        FAKE_CLI_DNS_CHECK_JSON=json.dumps(incomplete),
+    )
+    with pytest.raises(CliProtocolError, match="ad_blocked"):
+        client.dns_check()
+
+
 def test_bench_snapshot_returns_path_and_data(client, fake_log):
     result = client.bench_snapshot("before")
     assert fake_log.last_args() == [
