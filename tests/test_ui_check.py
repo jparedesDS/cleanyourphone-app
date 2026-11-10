@@ -382,7 +382,9 @@ def test_blocked_page_back_returns_to_welcome(qtbot, fake_context):
     page = BlockedPage(fake_context)
     qtbot.addWidget(page)
     targets: list[str] = []
+    restarts: list[bool] = []
     page.navigate.connect(targets.append)
+    page.restart_requested.connect(lambda: restarts.append(True))
 
     page.show_blocked("managed", SAFETY_DOCS_URL)
     page.back_button.click()
@@ -390,6 +392,7 @@ def test_blocked_page_back_returns_to_welcome(qtbot, fake_context):
     assert page.back_button.text() == fake_context.translator.tr("blocked.back")
     assert page.next_page == "welcome"
     assert targets == ["welcome"]
+    assert restarts == [True]
 
 
 def test_blocked_page_hides_external_actions_without_a_link(qtbot, fake_context):
@@ -463,3 +466,52 @@ def test_window_routes_a_blocked_probe_to_the_blocked_page(qtbot):
     assert window.blocked_page.link == SKILL_URL
     assert window.blocked_page.skill_button.isVisibleTo(window.blocked_page) is True
     assert window.check_page.blocked_link == SKILL_URL
+
+
+def test_blocked_phone_can_start_a_new_session_after_volver(qtbot):
+    fake_cli = FakeCli(result=probe(auto_apply_profiles=()))
+    context = AppContext.fake(
+        translator=Translator("en"),
+        cli=fake_cli,
+        adb_info=make_info(),
+        device_lister=lambda _info: [USB_DEVICE],
+    )
+    window = MainWindow(context)
+    qtbot.addWidget(window)
+    window.show()
+    window.start_flow()
+
+    qtbot.waitUntil(
+        lambda: context.session.state is SessionState.BLOCKED, timeout=5000
+    )
+    qtbot.waitUntil(lambda: window.check_page.busy is False, timeout=3000)
+    assert fake_cli.probe_calls == 1
+
+    window.blocked_page.back_button.click()
+
+    assert window.current_page_name == "welcome"
+    assert context.session.state is SessionState.WELCOME
+    assert context.session.serial is None
+    assert context.session.transport is None
+    assert context.session.blocked_reason is None
+    assert context.session.blocked_link is None
+    assert window.check_page.next_page is None
+    assert window.check_page.blocked_reason is None
+    assert window.check_page.blocked_link is None
+    assert window.check_page.profile_combo.count() == 0
+    assert window.check_page.error_label.text() == ""
+
+    fake_cli.probe_result = probe()
+    window.welcome_page.usb_button.click()
+    window.connect_page.usb_connect_button.click()
+
+    qtbot.waitUntil(
+        lambda: context.session.state is SessionState.BACKUP, timeout=5000
+    )
+    qtbot.waitUntil(lambda: window.check_page.busy is False, timeout=3000)
+
+    assert window.current_page_name == "backup"
+    assert context.session.serial == USB_DEVICE.serial
+    assert context.session.transport is Transport.USB
+    assert context.session.profile_id == "pixel-8"
+    assert fake_cli.probe_calls == 2

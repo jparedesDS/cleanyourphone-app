@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
@@ -39,6 +39,8 @@ REASON_KEYS: dict[str, str] = {
 
 class BlockedPage(Page):
     """Explain why the app stopped and offer the only safe next steps."""
+
+    restart_requested = Signal()
 
     def __init__(
         self,
@@ -104,7 +106,7 @@ class BlockedPage(Page):
         self.back_button = QPushButton(self)
         self.back_button.setObjectName("blocked_back_button")
         self.back_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.back_button.clicked.connect(lambda checked=False: self._go("welcome"))
+        self.back_button.clicked.connect(self._go_back)
 
         buttons = QHBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
@@ -132,6 +134,10 @@ class BlockedPage(Page):
         self.reason = reason if isinstance(reason, str) and reason else None
         self.link = link if isinstance(link, str) and link.strip() else None
         self.retranslate()
+
+    def _go_back(self, checked: bool = False) -> None:
+        self.restart_requested.emit()
+        self._go("welcome")
 
     def _update_actions(self) -> None:
         is_skill = self.link == SKILL_URL

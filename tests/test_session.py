@@ -189,6 +189,46 @@ def test_blocked_rejects_an_allowed_decision():
         s.blocked(decide_support(probe(auto_apply_profiles=("pixel-8",))))
 
 
+def test_reset_after_a_block_returns_to_welcome_and_clears_everything():
+    decision = decide_support(probe(auto_apply_profiles=()))
+
+    s = SessionController()
+    s.start()
+    s.attach("usb-1", Transport.USB)
+    # A blocked session normally has no probe/backup yet. Populate the fields
+    # directly to prove reset clears every recorded fact, not only the device.
+    s.probe = probe()
+    s.profile_id = "pixel-8"
+    s.backup_path = Path("C:/backup/one")
+    s.selected_packages = ("com.example.one",)
+    s.completed_batches = 2
+    s.blocked(decision)
+
+    s.reset()
+
+    assert s.state is SessionState.WELCOME
+    assert s.serial is None
+    assert s.transport is None
+    assert s.probe is None
+    assert s.profile_id is None
+    assert s.backup_path is None
+    assert s.selected_packages == ()
+    assert s.completed_batches == 0
+    assert s.blocked_reason is None
+    assert s.blocked_link is None
+    assert s.error_message is None
+    assert s.can_apply() is False
+    assert s.can_undo() is False
+
+
+def test_reset_is_only_allowed_from_a_blocked_session():
+    s = SessionController()
+    s.start()
+
+    with pytest.raises(InvalidTransition):
+        s.reset()
+
+
 def test_checked_stores_the_profile_and_moves_to_backup():
     phone = probe()
 

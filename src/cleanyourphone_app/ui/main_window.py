@@ -255,6 +255,7 @@ class MainWindow(QMainWindow):
         self.register_page("check", self.check_page)
 
         self.blocked_page = BlockedPage(self.context)
+        self.blocked_page.restart_requested.connect(self._restart_after_block)
         self.register_page("blocked", self.blocked_page)
 
         self.setup_page = SetupPage(self.context, on_ready=self.start_flow)
@@ -364,6 +365,18 @@ class MainWindow(QMainWindow):
         if page is None or self._pages.get("blocked") is not page:
             return
         page.show_blocked(reason, link)
+
+    def _restart_after_block(self) -> None:
+        """Throw away the blocked session before returning to Welcome."""
+        try:
+            self.context.session.reset()
+        except (SessionError, ValueError, TypeError):
+            logging.getLogger(LOGGER_NAME).warning(
+                "could not reset the blocked session"
+            )
+            return
+        if self.check_page is not None:
+            self.check_page.reset()
 
     @property
     def current_page_name(self) -> str:

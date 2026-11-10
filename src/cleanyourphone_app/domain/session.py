@@ -227,6 +227,26 @@ class SessionController:
         self.blocked_link = decision.link
         self.state = SessionState.BLOCKED
 
+    def reset(self) -> None:
+        """Clear a blocked session so the user can connect another phone.
+
+        ``BLOCKED`` is the only terminal stop the user can leave from the UI.
+        Resetting starts a genuinely new session: no serial, transport, probe,
+        profile, backup, selection, progress or blocked reason survives.
+        """
+        self._require_state(SessionState.BLOCKED, action="start a new session")
+        self.serial = None
+        self.transport = None
+        self.probe = None
+        self.profile_id = None
+        self.backup_path = None
+        self.selected_packages = ()
+        self.completed_batches = 0
+        self.blocked_reason = None
+        self.blocked_link = None
+        self.error_message = None
+        self.state = SessionState.WELCOME
+
     def backup_done(self, path: str | Path) -> None:
         """Record the verified backup folder created in this session."""
         self._require_state(

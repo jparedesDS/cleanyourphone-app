@@ -194,6 +194,35 @@ class CheckPage(Page):
         """Wait briefly for the probe worker when the window is closing."""
         self._call.shutdown(5000)
 
+    def reset(self) -> None:
+        """Return to a pristine page so a new phone can be probed again."""
+        self._call.shutdown(5000)
+        self._busy = False
+        self._completed = False
+        self._has_run = False
+        self._probe = None
+        self.blocked_reason = None
+        self.blocked_link = None
+        self.blocked_decision = None
+        self.next_page = None
+        self._clear_error()
+        self.retry_button.hide()
+        self.busy_label.hide()
+        self.profile_combo.blockSignals(True)
+        self.profile_combo.clear()
+        self.profile_combo.blockSignals(False)
+        self.profile_label.hide()
+        self.continue_button.hide()
+        self.continue_button.setEnabled(False)
+        for label in (
+            self.model_label,
+            self.android_label,
+            self.build_label,
+            self.battery_label,
+            self.connection_label,
+        ):
+            label.setText(self.tr("common.not_available"))
+
     def _probe_succeeded(self, result: object) -> None:
         if not isinstance(result, ProbeData):
             self._show_error("check.failed")
