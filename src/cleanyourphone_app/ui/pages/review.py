@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 from cleanyourphone_app.domain.models import PlanData, PlanRow
 from cleanyourphone_app.domain.review import ReviewModel, plan_allows_review
 from cleanyourphone_app.domain.session import SessionError
+from cleanyourphone_app.domain.support import SKILL_URL
 from cleanyourphone_app.i18n.packages import PackageCatalog
 from cleanyourphone_app.services.logging import LOGGER_NAME
 from cleanyourphone_app.ui.pages.base import Page
@@ -189,8 +190,18 @@ class ReviewPage(Page):
             lambda checked=False: self._update_selection_state()
         )
 
+        self.documented_skill_label = QLabel(self.documented_card)
+        self.documented_skill_label.setProperty("role", "muted")
+        self.documented_skill_label.setWordWrap(True)
+        self.documented_skill_label.setTextFormat(Qt.TextFormat.RichText)
+        self.documented_skill_label.setOpenExternalLinks(True)
+        self.documented_skill_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+        )
+
         documented_layout.addWidget(self.documented_label)
         documented_layout.addWidget(self.documented_ack)
+        documented_layout.addWidget(self.documented_skill_label)
         self.documented_card.hide()
 
         self.busy_label = QLabel(self)
@@ -710,6 +721,10 @@ class ReviewPage(Page):
         self.body_label.setText(self.tr("review.body"))
         self.documented_label.setText(self.tr("review.documented_warning"))
         self.documented_ack.setText(self.tr("review.documented_ack"))
+        self.documented_skill_label.setText(
+            f'<a href="{SKILL_URL}" style="color:#A78BFA;">'
+            f"{self.tr('review.documented_skill')}</a>"
+        )
         self.busy_label.setText(self.tr("review.loading"))
         self.tested_heading.setText(self.tr("review.tested"))
         self.ask_heading.setText(self.tr("review.ask"))

@@ -138,6 +138,7 @@
   "review.disable_n": "Disable {count} apps",
   "review.documented_warning": "Documented profile. This list comes from a firmware dump and was not tested on a real phone. Packages can differ by region, carrier or update. Only the apps you check will be disabled, one at a time.",
   "review.documented_ack": "I reviewed this list and understand it was not tested on a real phone.",
+  "review.documented_skill": "Prefer an agent walkthrough? Use the skill instead (opens SKILL.md).",
   "review.empty_selection": "Choose at least one app to continue.",
   "review.details_in_english": "Details in English",
   "review.continue": "Continue",

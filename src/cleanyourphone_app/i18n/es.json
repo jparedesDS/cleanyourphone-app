@@ -138,6 +138,7 @@
   "review.disable_n": "Desactivar {count} apps",
   "review.documented_warning": "Perfil documentado. Esta lista sale de un dump de firmware y no se ha probado en un móvil real. Los paquetes pueden variar por región, operador o actualización. Solo se desactivarán las apps que marques, de una en una.",
   "review.documented_ack": "He revisado esta lista y entiendo que no se ha probado en un móvil real.",
+  "review.documented_skill": "¿Prefieres que lo guíe un agente? Usa la skill (abre SKILL.md).",
   "review.empty_selection": "Elige al menos una app para continuar.",
   "review.details_in_english": "Detalles en inglés",
   "review.continue": "Continuar",
