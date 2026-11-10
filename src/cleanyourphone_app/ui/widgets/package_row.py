@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from cleanyourphone_app.domain.models import PlanRow
+from cleanyourphone_app.i18n.packages import PackageCatalog
 
 _DEFAULT_LABELS: dict[str, str] = {
     "review.why": "Why",
@@ -30,6 +31,8 @@ _DEFAULT_LABELS: dict[str, str] = {
     "review.leave_as_is": "Leave it as it is",
     "review.blocked": "Not changed",
 }
+
+ENGLISH_DETAILS_NOTE = "Detalles en inglés"
 
 
 def _default_tr(key: str) -> str:
@@ -44,7 +47,7 @@ class PackageRow(QFrame):
     def __init__(
         self,
         row: PlanRow,
-        catalog: object | None = None,
+        catalog: PackageCatalog | None = None,
         *,
         checked: bool = False,
         selectable: bool = True,
@@ -119,6 +122,11 @@ class PackageRow(QFrame):
         self.breaks_label.setProperty("role", "body")
         self.breaks_label.setWordWrap(True)
 
+        self.english_note_label = QLabel(self)
+        self.english_note_label.setObjectName("package_row_english_note")
+        self.english_note_label.setProperty("role", "muted")
+        self.english_note_label.setWordWrap(True)
+
         self.reason_label = QLabel(self)
         self.reason_label.setObjectName("package_row_reason")
         self.reason_label.setProperty("role", "muted")
@@ -127,6 +135,7 @@ class PackageRow(QFrame):
         body.addWidget(self.package_label)
         body.addWidget(self.why_label)
         body.addWidget(self.breaks_label)
+        body.addWidget(self.english_note_label)
         body.addWidget(self.reason_label)
         outer.addLayout(body, 1)
 
@@ -136,6 +145,7 @@ class PackageRow(QFrame):
             self.package_label,
             self.why_label,
             self.breaks_label,
+            self.english_note_label,
             self.reason_label,
         ):
             label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
@@ -186,19 +196,32 @@ class PackageRow(QFrame):
         self.package_label.setText(self.row.package)
         self.package_label.setVisible(bool(self._friendly_name))
 
-        if self.row.why.strip():
-            self.why_label.setText(f"{tr('review.why')}: {self.row.why}")
+        why_text, why_translated = self._detail("why", self.row.why)
+        breaks_text, breaks_translated = self._detail("breaks", self.row.breaks)
+        used_english = (
+            bool(self.row.why.strip()) and not why_translated
+        ) or (bool(self.row.breaks.strip()) and not breaks_translated)
+
+        if why_text.strip():
+            self.why_label.setText(f"{tr('review.why')}: {why_text}")
             self.why_label.show()
         else:
             self.why_label.clear()
             self.why_label.hide()
 
-        if self.row.breaks.strip():
-            self.breaks_label.setText(f"{tr('review.breaks')}: {self.row.breaks}")
+        if breaks_text.strip():
+            self.breaks_label.setText(f"{tr('review.breaks')}: {breaks_text}")
             self.breaks_label.show()
         else:
             self.breaks_label.clear()
             self.breaks_label.hide()
+
+        if used_english:
+            self.english_note_label.setText(ENGLISH_DETAILS_NOTE)
+            self.english_note_label.show()
+        else:
+            self.english_note_label.clear()
+            self.english_note_label.hide()
 
         if not self._selectable and self.row.reason.strip():
             self.reason_label.setText(self.row.reason)
@@ -209,6 +232,11 @@ class PackageRow(QFrame):
 
         self._update_status()
         self._update_accessible_names(display_name)
+
+    def _detail(self, field: str, english: str) -> tuple[str, bool]:
+        if self.catalog is None:
+            return english, False
+        return self.catalog.lookup(self.row.package, field, english)
 
     def _update_status(self) -> None:
         if not self._selectable:

@@ -1,0 +1,394 @@
+{
+  "cn.oneplus.photos": {
+    "why": "OnePlus Photos",
+    "breaks": "Aplicación OnePlus Photos"
+  },
+  "com.android.chrome": {
+    "why": "Chrome preinstalado",
+    "breaks": "Navegador Chrome"
+  },
+  "com.google.android.apps.docs": {
+    "why": "Google Drive preinstalado",
+    "breaks": "Aplicación Drive y sincronización de archivos"
+  },
+  "com.google.android.apps.googleassistant": {
+    "why": "Asistente de Google",
+    "breaks": "Asistente"
+  },
+  "com.google.android.apps.maps": {
+    "why": "Google Maps preinstalado",
+    "breaks": "Mapas y navegación"
+  },
+  "com.google.android.apps.messaging": {
+    "why": "Google Messages",
+    "breaks": "SMS/RCS si es la predeterminada; el control de roles bloquea ese caso"
+  },
+  "com.google.android.apps.nexuslauncher": {
+    "why": "Pixel Launcher",
+    "breaks": "Inicio si es el predeterminado; el control de roles bloquea ese caso"
+  },
+  "com.google.android.apps.photos": {
+    "why": "Google Photos preinstalado",
+    "breaks": "Copia de seguridad y galería de Photos"
+  },
+  "com.google.android.apps.restore": {
+    "why": "Restauración de Google",
+    "breaks": "Restaurar apps y datos en un teléfono nuevo"
+  },
+  "com.google.android.apps.tachyon": {
+    "why": "Google Meet",
+    "breaks": "Llamadas de Meet"
+  },
+  "com.google.android.apps.turbo": {
+    "why": "Batería adaptativa y Estado del dispositivo",
+    "breaks": "Batería adaptativa, diagnóstico de batería"
+  },
+  "com.google.android.apps.walletnfcrel": {
+    "why": "Google Wallet",
+    "breaks": "Pagos sin contacto y tarjetas de transporte"
+  },
+  "com.google.android.apps.wellbeing": {
+    "why": "Bienestar digital: seguimiento del tiempo de pantalla y telemetría que puede que no uses",
+    "breaks": "Panel de tiempo de pantalla y temporizadores de apps"
+  },
+  "com.google.android.apps.youtube.music": {
+    "why": "YouTube Music preinstalado",
+    "breaks": "YouTube Music y sus descargas"
+  },
+  "com.google.android.calendar": {
+    "why": "Google Calendar preinstalado",
+    "breaks": "Aplicación Calendar y sus recordatorios"
+  },
+  "com.google.android.dialer": {
+    "why": "Teléfono de Google",
+    "breaks": "Llamadas si es la app predeterminada; el control de roles bloquea ese caso"
+  },
+  "com.google.android.feedback": {
+    "why": "Ayudante de comentarios e informes de fallos de Google",
+    "breaks": "Nada visible para el usuario"
+  },
+  "com.google.android.gm": {
+    "why": "Gmail preinstalado",
+    "breaks": "Aplicación Gmail y sus notificaciones"
+  },
+  "com.google.android.googlequicksearchbox": {
+    "why": "Aplicación de Google / Asistente",
+    "breaks": "Aplicación de Google y Asistente"
+  },
+  "com.google.android.inputmethod.latin": {
+    "why": "Gboard",
+    "breaks": "El teclado si es el predeterminado; el control de roles bloquea ese caso"
+  },
+  "com.google.android.keep": {
+    "why": "Google Keep preinstalado",
+    "breaks": "Notas de Keep"
+  },
+  "com.google.android.onetimeinitializer": {
+    "why": "Inicializador único de Google",
+    "breaks": "Configuración inicial única"
+  },
+  "com.google.android.partnersetup": {
+    "why": "Configuración de socios de Google",
+    "breaks": "Parte del aprovisionamiento de operador/OEM"
+  },
+  "com.google.android.projection.gearhead": {
+    "why": "Android Auto",
+    "breaks": "Android Auto"
+  },
+  "com.google.android.setupwizard": {
+    "why": "Asistente de configuración de Google",
+    "breaks": "Flujos de configuración y restauración"
+  },
+  "com.google.android.videos": {
+    "why": "Google TV / Play Movies",
+    "breaks": "Aplicación Google TV"
+  },
+  "com.google.android.youtube": {
+    "why": "YouTube preinstalado",
+    "breaks": "Aplicación YouTube"
+  },
+  "com.miui.analytics": {
+    "why": "Análisis de MIUI/HyperOS",
+    "breaks": "Análisis de uso; ninguna función visible para el usuario"
+  },
+  "com.miui.bugreport": {
+    "why": "Herramienta de informes de errores",
+    "breaks": "Informes de errores integrados"
+  },
+  "com.miui.calculator": {
+    "why": "Calculadora de Xiaomi",
+    "breaks": "Aplicación Calculadora"
+  },
+  "com.miui.camera": {
+    "why": "Cámara de Xiaomi",
+    "breaks": "Aplicación Cámara"
+  },
+  "com.miui.cleanmaster": {
+    "why": "Limpiador y acelerador preinstalados",
+    "breaks": "El acceso directo del limpiador; Android no lo necesita"
+  },
+  "com.miui.cloudbackup": {
+    "why": "Copia de seguridad de Mi Cloud",
+    "breaks": "Copia de seguridad y restauración de Mi Cloud"
+  },
+  "com.miui.cloudservice": {
+    "why": "Servicio Mi Cloud",
+    "breaks": "Copia de seguridad y sincronización de Mi Cloud"
+  },
+  "com.miui.compass": {
+    "why": "Brújula de Xiaomi",
+    "breaks": "Aplicación Brújula"
+  },
+  "com.miui.fm": {
+    "why": "Radio FM",
+    "breaks": "Radio FM (si el hardware la incluye)"
+  },
+  "com.miui.gallery": {
+    "why": "Galería de Xiaomi",
+    "breaks": "Aplicación Galería"
+  },
+  "com.miui.hybrid": {
+    "why": "Servicio de contenido y recomendaciones híbrido",
+    "breaks": "Algunas páginas de contenido del sistema"
+  },
+  "com.miui.miservice": {
+    "why": "Servicios y comentarios",
+    "breaks": "Comentarios y accesos directos a servicios"
+  },
+  "com.miui.miwallpaper": {
+    "why": "Fondos de pantalla de Xiaomi",
+    "breaks": "Selector de fondos y algunos temas del launcher"
+  },
+  "com.miui.msa.global": {
+    "why": "MSA: el servicio de anuncios y recomendaciones de MIUI/HyperOS",
+    "breaks": "Recomendaciones de anuncios del sistema"
+  },
+  "com.miui.notes": {
+    "why": "Notas de Xiaomi",
+    "breaks": "Aplicación Notas y su sincronización"
+  },
+  "com.miui.player": {
+    "why": "Música de Xiaomi",
+    "breaks": "Reproductor de música de Xiaomi"
+  },
+  "com.miui.screenrecorder": {
+    "why": "Grabador de pantalla",
+    "breaks": "Grabación de pantalla"
+  },
+  "com.miui.systemAdSolution": {
+    "why": "Solución de anuncios del sistema",
+    "breaks": "Espacios publicitarios del sistema"
+  },
+  "com.miui.videoplayer": {
+    "why": "Vídeo de Xiaomi",
+    "breaks": "Reproductor de vídeo de Xiaomi"
+  },
+  "com.miui.weather2": {
+    "why": "Clima de Xiaomi",
+    "breaks": "Aplicación Clima y widget"
+  },
+  "com.oneplus.account": {
+    "why": "Cuenta OnePlus",
+    "breaks": "Cuenta de OnePlus y funciones en la nube"
+  },
+  "com.oneplus.aod": {
+    "why": "Always On Display de OnePlus",
+    "breaks": "Always On Display"
+  },
+  "com.oneplus.appupgrader": {
+    "why": "Actualizador de apps de OnePlus",
+    "breaks": "Actualizaciones de apps de OnePlus"
+  },
+  "com.oneplus.backuprestore.remoteservice": {
+    "why": "Servicio de copia de seguridad y restauración de OnePlus",
+    "breaks": "Copia de seguridad y restauración"
+  },
+  "com.oneplus.brickmode": {
+    "why": "Modo Zen de OnePlus",
+    "breaks": "Modo Zen"
+  },
+  "com.oneplus.calculator": {
+    "why": "Calculadora de OnePlus",
+    "breaks": "Aplicación Calculadora"
+  },
+  "com.oneplus.camera": {
+    "why": "Cámara de OnePlus",
+    "breaks": "Aplicación Cámara"
+  },
+  "com.oneplus.camera.service": {
+    "why": "Servicio de cámara de OnePlus",
+    "breaks": "Funciones de la cámara"
+  },
+  "com.oneplus.contacts": {
+    "why": "Contactos de OnePlus",
+    "breaks": "Aplicación Contactos"
+  },
+  "com.oneplus.deskclock": {
+    "why": "Reloj y alarmas de OnePlus",
+    "breaks": "Aplicación de alarma, temporizador y reloj"
+  },
+  "com.oneplus.diagnosemanager": {
+    "why": "Diagnósticos de OnePlus",
+    "breaks": "Registros de diagnóstico"
+  },
+  "com.oneplus.filemanager": {
+    "why": "Administrador de archivos de OnePlus",
+    "breaks": "Administrador de archivos"
+  },
+  "com.oneplus.gallery": {
+    "why": "Galería de OnePlus",
+    "breaks": "Aplicación Galería y edición"
+  },
+  "com.oneplus.gamespace": {
+    "why": "Game Space de OnePlus y recomendaciones de juegos",
+    "breaks": "Game Space y herramientas de juego"
+  },
+  "com.oneplus.opbackup": {
+    "why": "Copia de seguridad de OnePlus",
+    "breaks": "Funciones de copia de seguridad"
+  },
+  "com.oneplus.opbugreportlite": {
+    "why": "Informe de errores de OnePlus",
+    "breaks": "Informes de errores"
+  },
+  "com.oneplus.screenrecord": {
+    "why": "Grabador de pantalla de OnePlus",
+    "breaks": "Grabación de pantalla"
+  },
+  "com.oneplus.screenshot": {
+    "why": "Servicio de capturas de pantalla de OnePlus",
+    "breaks": "Barra de herramientas y funciones de capturas"
+  },
+  "com.oneplus.setupwizard": {
+    "why": "Asistente de configuración de OnePlus",
+    "breaks": "Flujos de configuración y restauración"
+  },
+  "com.oneplus.wallpaper": {
+    "why": "Fondos de pantalla de OnePlus",
+    "breaks": "Selector de fondos y temas"
+  },
+  "com.qti.service.colorservice": {
+    "why": "Servicio de color de Qualcomm",
+    "breaks": "Funciones de color de la pantalla"
+  },
+  "com.qualcomm.location": {
+    "why": "Ubicación de Qualcomm",
+    "breaks": "Servicios de ubicación"
+  },
+  "com.qualcomm.qti.devicestatisticsservice": {
+    "why": "Estadísticas del dispositivo de Qualcomm",
+    "breaks": "Telemetría de Qualcomm"
+  },
+  "com.qualcomm.qti.qcolor": {
+    "why": "QColor de Qualcomm",
+    "breaks": "Funciones de color de la pantalla"
+  },
+  "com.qualcomm.qti.qms.service.telemetry": {
+    "why": "Servicio de telemetría de Qualcomm",
+    "breaks": "Telemetría de Qualcomm"
+  },
+  "com.qualcomm.qtil.aptxals": {
+    "why": "aptX de Qualcomm",
+    "breaks": "Audio Bluetooth aptX"
+  },
+  "com.qualcomm.wfd.service": {
+    "why": "Servicio Wi-Fi Display",
+    "breaks": "Transmisión de pantalla"
+  },
+  "com.samsung.android.app.notes": {
+    "why": "Samsung Notes",
+    "breaks": "Samsung Notes y su sincronización"
+  },
+  "com.samsung.android.app.reminder": {
+    "why": "Samsung Reminder",
+    "breaks": "Aplicación Reminder y sus notificaciones"
+  },
+  "com.samsung.android.app.sharelive": {
+    "why": "Uso compartido en directo de Quick Share",
+    "breaks": "Uso compartido en directo de Quick Share"
+  },
+  "com.samsung.android.app.spage": {
+    "why": "Samsung Free: la principal superficie de anuncios y recomendaciones en One UI",
+    "breaks": "Samsung Free (noticias, juegos, promociones)"
+  },
+  "com.samsung.android.app.tips": {
+    "why": "Samsung Tips preinstalado",
+    "breaks": "Aplicación Tips"
+  },
+  "com.samsung.android.app.watchmanager": {
+    "why": "Galaxy Wearable",
+    "breaks": "Emparejamiento de Galaxy Watch"
+  },
+  "com.samsung.android.aremoji": {
+    "why": "AR Emoji",
+    "breaks": "AR Emoji y funciones de avatar"
+  },
+  "com.samsung.android.arzone": {
+    "why": "AR Zone",
+    "breaks": "Aplicaciones de AR Zone"
+  },
+  "com.samsung.android.bixby.agent": {
+    "why": "Asistente de voz Bixby",
+    "breaks": "Voz de Bixby y su acción del botón lateral"
+  },
+  "com.samsung.android.bixby.wakeup": {
+    "why": "Servicio de activación por voz de Bixby",
+    "breaks": "Palabra de activación de Bixby siempre activa"
+  },
+  "com.samsung.android.calendar": {
+    "why": "Samsung Calendar",
+    "breaks": "Aplicación Samsung Calendar"
+  },
+  "com.samsung.android.email.provider": {
+    "why": "Samsung Email",
+    "breaks": "Aplicación Samsung Email"
+  },
+  "com.samsung.android.forest": {
+    "why": "Bienestar digital de Samsung",
+    "breaks": "Informes de tiempo de pantalla y temporizadores de apps"
+  },
+  "com.samsung.android.game.gamehome": {
+    "why": "Game Launcher",
+    "breaks": "Game Launcher y herramientas de juego"
+  },
+  "com.samsung.android.mdx": {
+    "why": "Vincular con Windows",
+    "breaks": "Phone Link / Vincular con Windows"
+  },
+  "com.samsung.android.oneconnect": {
+    "why": "SmartThings",
+    "breaks": "SmartThings y el control del hogar inteligente"
+  },
+  "com.samsung.android.scloud": {
+    "why": "Copia de seguridad y sincronización de Samsung Cloud",
+    "breaks": "Copia de seguridad y restauración de Samsung Cloud"
+  },
+  "com.sec.android.app.sbrowser": {
+    "why": "Samsung Internet",
+    "breaks": "Navegador Samsung Internet"
+  },
+  "com.xiaomi.glgm": {
+    "why": "Game Center",
+    "breaks": "Game Center y descargas de juegos"
+  },
+  "com.xiaomi.mipicks": {
+    "why": "Tienda GetApps y sus recomendaciones",
+    "breaks": "Tienda GetApps"
+  },
+  "net.oneplus.commonlogtool": {
+    "why": "Herramienta de registros común de OnePlus",
+    "breaks": "Captura de registros"
+  },
+  "net.oneplus.odm": {
+    "why": "Administrador de dispositivos de OnePlus",
+    "breaks": "Gestión del dispositivo y telemetría"
+  },
+  "net.oneplus.odm.provider": {
+    "why": "Proveedor del Administrador de dispositivos de OnePlus",
+    "breaks": "Gestión del dispositivo"
+  },
+  "net.oneplus.push": {
+    "why": "OnePlus Push",
+    "breaks": "Notificaciones push de OnePlus"
+  }
+}
