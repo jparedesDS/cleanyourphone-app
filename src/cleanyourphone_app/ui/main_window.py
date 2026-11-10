@@ -29,6 +29,8 @@ from PySide6.QtWidgets import (
 from cleanyourphone_app.domain.session import SessionError
 from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
 from cleanyourphone_app.services.logging import LOGGER_NAME
+from cleanyourphone_app.ui.pages.blocked import SAFETY_DOCS_URL, BlockedPage
+from cleanyourphone_app.ui.pages.check import CheckPage
 from cleanyourphone_app.ui.pages.connect import ConnectPage, transport_for
 from cleanyourphone_app.ui.pages.setup import SetupPage
 from cleanyourphone_app.ui.pages.welcome import WelcomePage
@@ -124,6 +126,8 @@ class MainWindow(QMainWindow):
         self.setup_page: SetupPage | None = None
         self.welcome_page: WelcomePage | None = None
         self.connect_page: ConnectPage | None = None
+        self.check_page: CheckPage | None = None
+        self.blocked_page: BlockedPage | None = None
 
         self.setObjectName("MainWindow")
         self.setMinimumSize(900, 640)
@@ -247,6 +251,12 @@ class MainWindow(QMainWindow):
         self.connect_page = ConnectPage(self.context)
         self.register_page("connect", self.connect_page)
 
+        self.check_page = CheckPage(self.context)
+        self.register_page("check", self.check_page)
+
+        self.blocked_page = BlockedPage(self.context)
+        self.register_page("blocked", self.blocked_page)
+
         self.setup_page = SetupPage(self.context, on_ready=self.start_flow)
         self.register_page("setup", self.setup_page)
         self._real_pages = True
@@ -338,10 +348,22 @@ class MainWindow(QMainWindow):
                 f"unknown page {name!r}; register it before navigating to it"
             )
         self.stack.setCurrentWidget(page)
+        if canonical == "blocked":
+            reason = self.context.session.blocked_reason
+            link = self.context.session.blocked_link
+            if link is None and reason is not None:
+                link = SAFETY_DOCS_URL
+            self._show_blocked(reason, link)
         step = STEP_FOR_PAGE.get(canonical)
         if step is not None:
             self._set_current_step(step)
         return canonical
+
+    def _show_blocked(self, reason: str | None, link: str | None) -> None:
+        page = self.blocked_page
+        if page is None or self._pages.get("blocked") is not page:
+            return
+        page.show_blocked(reason, link)
 
     @property
     def current_page_name(self) -> str:
@@ -378,7 +400,7 @@ class MainWindow(QMainWindow):
         self.retranslate()
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        for page in (self.setup_page, self.connect_page):
+        for page in (self.setup_page, self.connect_page, self.check_page):
             shutdown = getattr(page, "shutdown", None)
             if callable(shutdown):
                 shutdown()
