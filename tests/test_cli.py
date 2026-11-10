@@ -186,6 +186,29 @@ def test_verify_rejects_an_empty_check_list(base_env):
         client.verify()
 
 
+def test_verify_returns_checks_when_the_sidecar_reports_a_failure(base_env):
+    payload = json.dumps(
+        [{"check": "Home", "status": "FAIL", "detail": "no enabled Home app"}]
+    )
+    client = make_client(
+        base_env,
+        FAKE_CLI_VERIFY_EXIT="1",
+        FAKE_CLI_VERIFY_JSON=payload,
+    )
+    verify = client.verify()
+    assert verify == {
+        "checks": [
+            {"check": "Home", "status": "FAIL", "detail": "no enabled Home app"}
+        ]
+    }
+
+
+def test_verify_rejects_an_exit_code_above_one(base_env):
+    client = make_client(base_env, FAKE_CLI_VERIFY_EXIT="2")
+    with pytest.raises(CliProtocolError, match="exited with 2"):
+        client.verify()
+
+
 def test_backup_returns_the_cli_result(client, fake_log):
     result = client.backup()
     assert result.returncode == 0

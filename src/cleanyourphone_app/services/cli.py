@@ -171,9 +171,11 @@ class CliClient:
         args: Sequence[str],
         parser: Callable[[Any], _T],
         timeout: int = 120,
+        *,
+        accepted_returncodes: tuple[int, ...] = (0,),
     ) -> _T:
         result = self.run(args, timeout=timeout)
-        if result.returncode != 0:
+        if result.returncode not in accepted_returncodes:
             raise CliProtocolError(
                 _message(args, f"exited with {result.returncode}", result.stderr)
             )
@@ -207,7 +209,13 @@ class CliClient:
         )
 
     def verify(self) -> dict:
-        return self._read_json(("--json", "verify"), _verify_payload)
+        # `verify` exits 1 when a check fails. The JSON payload is still valid
+        # and is exactly what the failure path in the UI needs to display.
+        return self._read_json(
+            ("--json", "verify"),
+            _verify_payload,
+            accepted_returncodes=(0, 1),
+        )
 
     def list_disabled(self) -> set[str]:
         return self._read_json(
