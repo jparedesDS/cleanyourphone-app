@@ -1,0 +1,336 @@
+"""The native window shell: header, step indicator, language switch and stack.
+
+Feature pages are added later through :meth:`MainWindow.register_page`. Until
+then each flow state has a small translated placeholder so the shell can be
+built and tested on its own. The window always starts on ``welcome`` and the
+language switch is part of the fixed header, so it is visible on every screen.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QPushButton,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
+
+from cleanyourphone_app.services.logging import LOGGER_NAME
+
+if TYPE_CHECKING:
+    from cleanyourphone_app.ui.app import AppContext
+
+FLOW_PAGES: tuple[str, ...] = (
+    "welcome",
+    "connect",
+    "check",
+    "backup",
+    "review",
+    "apply",
+    "done",
+)
+
+PAGE_NAMES: tuple[str, ...] = (*FLOW_PAGES, "blocked", "error", "setup")
+
+PAGE_ALIASES: dict[str, str] = {
+    "connecting": "connect",
+    "checking": "check",
+    "applying": "apply",
+}
+
+STEP_FOR_PAGE: dict[str, str] = {
+    "welcome": "welcome",
+    "connect": "connect",
+    "check": "check",
+    "backup": "backup",
+    "review": "review",
+    "apply": "apply",
+    "done": "done",
+    "setup": "welcome",
+}
+
+_LOGO_PATH = Path(__file__).resolve().parents[1] / "resources" / "logo.svg"
+
+
+class _PlaceholderPage(QWidget):
+    """Translated stand-in until the real feature page is registered."""
+
+    def __init__(self, name: str, context: AppContext, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._name = name
+        self._context = context
+        self.setObjectName(name)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(52, 44, 52, 44)
+        layout.setSpacing(18)
+
+        self.title_label = QLabel(self)
+        self.title_label.setProperty("role", "title")
+        self.title_label.setWordWrap(True)
+
+        self.body_label = QLabel(self)
+        self.body_label.setProperty("role", "body")
+        self.body_label.setWordWrap(True)
+
+        self.hint_label = QLabel(self)
+        self.hint_label.setProperty("role", "muted")
+        self.hint_label.setWordWrap(True)
+
+        layout.addWidget(self.title_label)
+        layout.addWidget(self.body_label)
+        if name == "welcome":
+            layout.addWidget(self.hint_label)
+        layout.addStretch(1)
+        self.retranslate()
+
+    def retranslate(self) -> None:
+        tr = self._context.translator.tr
+        title = tr(f"{self._name}.title")
+        body = tr(f"{self._name}.body")
+        self.title_label.setText(title)
+        self.body_label.setText(body)
+        self.title_label.setAccessibleName(title)
+        self.body_label.setAccessibleName(body)
+        if self._name == "welcome":
+            self.hint_label.setText(tr("welcome.hint"))
+
+
+class MainWindow(QMainWindow):
+    """One native window with a fixed header and a replaceable page stack."""
+
+    def __init__(self, context: AppContext, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.context = context
+        self._pages: dict[str, QWidget] = {}
+        self._current_step = "welcome"
+
+        self.setObjectName("MainWindow")
+        self.setMinimumSize(900, 640)
+        self.resize(980, 700)
+
+        self._build_ui()
+        self._register_default_pages()
+        self._load_theme()
+        self.retranslate()
+        self.show_page("welcome")
+
+    # ------------------------------------------------------------------ build
+
+    def _build_ui(self) -> None:
+        central = QWidget(self)
+        central.setObjectName("Root")
+        root_layout = QVBoxLayout(central)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        header = QFrame(central)
+        header.setObjectName("Header")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(28, 16, 28, 14)
+        header_layout.setSpacing(14)
+
+        self.logo_label = QLabel(header)
+        self.logo_label.setObjectName("Logo")
+        self.logo_label.setFixedSize(38, 38)
+        self.logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon = QIcon(str(_LOGO_PATH))
+        if icon.isNull():
+            self.logo_label.setText("C")
+            self.logo_label.setProperty("role", "brand")
+        else:
+            self.setWindowIcon(icon)
+            self.logo_label.setPixmap(icon.pixmap(34, 34))
+
+        brand_layout = QVBoxLayout()
+        brand_layout.setContentsMargins(0, 0, 0, 0)
+        brand_layout.setSpacing(1)
+        self.app_name_label = QLabel(header)
+        self.app_name_label.setProperty("role", "brand")
+        self.tagline_label = QLabel(header)
+        self.tagline_label.setProperty("role", "muted")
+        brand_layout.addWidget(self.app_name_label)
+        brand_layout.addWidget(self.tagline_label)
+
+        self.language_switch = QWidget(header)
+        self.language_switch.setObjectName("LanguageSwitch")
+        switch_layout = QHBoxLayout(self.language_switch)
+        switch_layout.setContentsMargins(0, 0, 0, 0)
+        switch_layout.setSpacing(5)
+
+        self.language_label = QLabel(self.language_switch)
+        self.language_label.setProperty("role", "muted")
+        switch_layout.addWidget(self.language_label)
+
+        self._language_group = QButtonGroup(self)
+        self._language_group.setExclusive(True)
+        self.language_buttons: dict[str, QPushButton] = {}
+        for code in ("es", "en"):
+            button = QPushButton(self.language_switch)
+            button.setObjectName(f"language_{code}")
+            button.setProperty("role", "language")
+            button.setCheckable(True)
+            button.setAutoDefault(False)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.clicked.connect(
+                lambda checked=False, language=code: self.set_language(language)
+            )
+            self._language_group.addButton(button)
+            self.language_buttons[code] = button
+            switch_layout.addWidget(button)
+
+        header_layout.addWidget(self.logo_label)
+        header_layout.addLayout(brand_layout)
+        header_layout.addStretch(1)
+        header_layout.addWidget(self.language_switch)
+        root_layout.addWidget(header)
+
+        step_bar = QFrame(central)
+        step_bar.setObjectName("StepBar")
+        step_layout = QHBoxLayout(step_bar)
+        step_layout.setContentsMargins(28, 9, 28, 9)
+        step_layout.setSpacing(6)
+
+        self.step_labels: dict[str, QLabel] = {}
+        for step in FLOW_PAGES:
+            label = QLabel(step_bar)
+            label.setObjectName(f"step_{step}")
+            label.setProperty("role", "step")
+            label.setProperty("current", step == "welcome")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.step_labels[step] = label
+            step_layout.addWidget(label, 1)
+        root_layout.addWidget(step_bar)
+
+        self.stack = QStackedWidget(central)
+        self.stack.setObjectName("PageStack")
+        root_layout.addWidget(self.stack, 1)
+
+        self.setCentralWidget(central)
+
+        self.statusBar().setObjectName("AppStatusBar")
+        self.statusBar().setSizeGripEnabled(False)
+
+    def _register_default_pages(self) -> None:
+        for name in PAGE_NAMES:
+            self.register_page(name, _PlaceholderPage(name, self.context))
+
+    def _load_theme(self) -> None:
+        theme = Path(__file__).with_name("theme.qss").read_text(encoding="utf-8")
+        self.setStyleSheet(theme)
+
+    # --------------------------------------------------------------- pages
+
+    @staticmethod
+    def _canonical(name: str) -> str:
+        return PAGE_ALIASES.get(name, name)
+
+    def register_page(self, name: str, page: QWidget) -> None:
+        """Add or replace a page in the stack, preserving the current page."""
+        canonical = self._canonical(name)
+        page.setObjectName(canonical)
+        previous = self._pages.get(canonical)
+        was_current = previous is not None and self.stack.currentWidget() is previous
+        if previous is not None:
+            self.stack.removeWidget(previous)
+            previous.deleteLater()
+
+        self._pages[canonical] = page
+        self.stack.addWidget(page)
+        if was_current:
+            self.stack.setCurrentWidget(page)
+
+        retranslate = getattr(page, "retranslate", None)
+        if callable(retranslate):
+            retranslate()
+
+    def show_page(self, name: str) -> str:
+        """Show *name* and return its canonical page name."""
+        canonical = self._canonical(name)
+        page = self._pages.get(canonical)
+        if page is None:
+            raise KeyError(
+                f"unknown page {name!r}; register it before navigating to it"
+            )
+        self.stack.setCurrentWidget(page)
+        step = STEP_FOR_PAGE.get(canonical)
+        if step is not None:
+            self._set_current_step(step)
+        return canonical
+
+    @property
+    def current_page_name(self) -> str:
+        page = self.stack.currentWidget()
+        return page.objectName() if page is not None else ""
+
+    @property
+    def current_step(self) -> str:
+        return self._current_step
+
+    def _set_current_step(self, step: str) -> None:
+        self._current_step = step
+        for name, label in self.step_labels.items():
+            active = name == step
+            if label.property("current") == active:
+                continue
+            label.setProperty("current", active)
+            label.style().unpolish(label)
+            label.style().polish(label)
+            label.update()
+
+    # ------------------------------------------------------------ language
+
+    def set_language(self, language: str) -> None:
+        """Switch language, persist the choice and retranslate the shell."""
+        normalized = self.context.translator.set_language(language)
+        self.context.settings.language = normalized
+        try:
+            self.context.settings.save()
+        except OSError:
+            logging.getLogger(LOGGER_NAME).warning(
+                "could not save the language setting"
+            )
+        self.retranslate()
+
+    def retranslate(self) -> None:
+        tr = self.context.translator.tr
+        self.setWindowTitle(tr("app.name"))
+        self.app_name_label.setText(tr("app.name"))
+        self.tagline_label.setText(tr("app.tagline"))
+        self.language_label.setText(tr("common.language"))
+        self.language_switch.setAccessibleName(tr("common.language"))
+
+        for step, label in self.step_labels.items():
+            text = tr(f"step.{step}")
+            label.setText(text)
+            label.setAccessibleName(text)
+
+        for code, button in self.language_buttons.items():
+            button.setText(code.upper())
+            if code == "es":
+                button.setToolTip(tr("language.switch_to_spanish"))
+            else:
+                button.setToolTip(tr("language.switch_to_english"))
+            button.setAccessibleName(button.toolTip())
+            button.setChecked(self.context.translator.language == code)
+
+        for page in self._pages.values():
+            retranslate = getattr(page, "retranslate", None)
+            if callable(retranslate):
+                retranslate()
+
+        self.statusBar().showMessage(tr("app.local_only"))
+
+
+__all__ = ["FLOW_PAGES", "PAGE_NAMES", "MainWindow"]
