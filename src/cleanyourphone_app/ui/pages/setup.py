@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QProgressDialog,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -120,6 +121,16 @@ class SetupPage(Page):
         self.error_label.setProperty("role", "error")
         self.error_label.setWordWrap(True)
         self.error_label.hide()
+
+        for label in (
+            self.body_label,
+            self.terms_label,
+            self.offline_label,
+            self.status_label,
+            self.error_label,
+        ):
+            label.setMinimumWidth(0)
+            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
         layout.addWidget(self.title_label)
         layout.addWidget(self.body_label)
