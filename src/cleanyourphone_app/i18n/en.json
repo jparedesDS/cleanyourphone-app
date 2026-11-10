@@ -46,6 +46,8 @@
   "setup.invalid_adb": "That file is not a valid ADB or is older than version 31.0.0.",
   "setup.download_failed": "Platform-Tools could not be downloaded. Nothing has been changed.",
   "setup.hash_failed": "The download did not pass the safety check. Nothing has been installed.",
+  "setup.download_cancelled": "Download cancelled. Nothing has been installed.",
+  "setup.cancelling": "Cancelling...",
   "setup.ready": "ADB is ready.",
   "connect.title": "Connect your phone",
   "connect.body": "Choose Wi-Fi for Android 11 or newer, or use a USB cable.",

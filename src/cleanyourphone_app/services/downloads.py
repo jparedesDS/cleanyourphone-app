@@ -37,6 +37,10 @@ class DownloadError(RuntimeError):
     """Platform-Tools could not be downloaded, verified or extracted."""
 
 
+class DownloadCancelled(DownloadError):
+    """The user cancelled the download; nothing was installed."""
+
+
 def _remove(path: Path) -> None:
     if not path.exists() and not path.is_symlink():
         return
@@ -47,6 +51,11 @@ def _remove(path: Path) -> None:
         path.unlink()
     except OSError:
         pass
+
+
+def _check_cancel(cancel: Callable[[], bool] | None) -> None:
+    if cancel is not None and cancel():
+        raise DownloadCancelled("Platform-Tools download cancelled")
 
 
 def _validate_member(name: str) -> None:
@@ -81,8 +90,18 @@ class PlatformToolsDownloader:
             )
         )
 
-    def download(self, destination: str | os.PathLike[str]) -> Path:
-        """Install Platform-Tools under *destination* and return ``adb.exe``."""
+    def download(
+        self,
+        destination: str | os.PathLike[str],
+        *,
+        cancel: Callable[[], bool] | None = None,
+    ) -> Path:
+        """Install Platform-Tools under *destination* and return ``adb.exe``.
+
+        *cancel* is polled before the network request and between chunks so the
+        UI can stop a slow download. Cancelling raises :class:`DownloadCancelled`
+        and removes every staged or installed file.
+        """
         destination = Path(destination)
         target = destination / _PREFIX
         try:
@@ -96,8 +115,10 @@ class PlatformToolsDownloader:
             ) from exc
 
         try:
+            _check_cancel(cancel)
             archive_path = staging / "platform-tools.zip"
-            digest = self._fetch(archive_path)
+            digest = self._fetch(archive_path, cancel)
+            _check_cancel(cancel)
             if digest != self._sha256:
                 raise DownloadError(
                     "Platform-Tools SHA-256 mismatch: "
@@ -105,7 +126,7 @@ class PlatformToolsDownloader:
                 )
 
             extracted = staging / "extracted"
-            self._extract(archive_path, extracted)
+            self._extract(archive_path, extracted, cancel)
             staged_tools = extracted / _PREFIX
             adb_path = staged_tools / "adb.exe"
             if not adb_path.is_file():
@@ -114,6 +135,7 @@ class PlatformToolsDownloader:
                     "platform-tools/adb.exe"
                 )
 
+            _check_cancel(cancel)
             _remove(target)
             os.replace(staged_tools, target)
             return target / "adb.exe"
@@ -126,8 +148,13 @@ class PlatformToolsDownloader:
         finally:
             shutil.rmtree(staging, ignore_errors=True)
 
-    def _fetch(self, archive_path: Path) -> str:
+    def _fetch(
+        self,
+        archive_path: Path,
+        cancel: Callable[[], bool] | None = None,
+    ) -> str:
         """Stream the archive to disk and return its SHA-256 digest."""
+        _check_cancel(cancel)
         digest = hashlib.sha256()
         try:
             response = self._opener(self._url)
@@ -135,22 +162,29 @@ class PlatformToolsDownloader:
             raise DownloadError(f"could not download {self._url}: {exc}") from exc
 
         try:
-            with contextlib.closing(response):
-                with archive_path.open("wb") as handle:
-                    while True:
-                        chunk = response.read(_CHUNK)
-                        if not chunk:
-                            break
-                        handle.write(chunk)
-                        digest.update(chunk)
+            with contextlib.closing(response), archive_path.open("wb") as handle:
+                while True:
+                    _check_cancel(cancel)
+                    chunk = response.read(_CHUNK)
+                    if not chunk:
+                        break
+                    handle.write(chunk)
+                    digest.update(chunk)
         except OSError as exc:
             raise DownloadError(f"could not download {self._url}: {exc}") from exc
+        _check_cancel(cancel)
         return digest.hexdigest()
 
-    def _extract(self, archive_path: Path, destination: Path) -> None:
+    def _extract(
+        self,
+        archive_path: Path,
+        destination: Path,
+        cancel: Callable[[], bool] | None = None,
+    ) -> None:
         try:
             with zipfile.ZipFile(archive_path) as archive:
                 for info in archive.infolist():
+                    _check_cancel(cancel)
                     name = info.filename.replace("\\", "/")
                     _validate_member(name)
                     parts = PurePosixPath(name).parts

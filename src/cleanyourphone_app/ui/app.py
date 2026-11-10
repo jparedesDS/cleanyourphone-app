@@ -77,6 +77,7 @@ class AppContext:
         if not isinstance(info, AdbInfo):
             raise TypeError(f"use_adb requires an AdbInfo, not {type(info).__name__}")
         self.adb_info = info
+        self.cli.set_adb_path(info.path)
         self._remember_adb_path(str(info.path))
         return info
 

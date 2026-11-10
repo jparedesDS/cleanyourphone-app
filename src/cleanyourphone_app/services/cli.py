@@ -134,6 +134,21 @@ class CliClient:
         merged["PYTHONIOENCODING"] = "utf-8"
         self._env = merged
 
+    def set_adb_path(self, path: str | os.PathLike[str] | None) -> None:
+        """Point the next sidecar call at a verified ADB binary.
+
+        The app verifies the binary before calling this; passing ``None`` clears
+        the override and falls back to the environment the client was built
+        with.
+        """
+        if path is None:
+            self._env.pop("ADB", None)
+            return
+        value = os.fspath(path)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("ADB path must be a non-empty string")
+        self._env["ADB"] = value
+
     def run(self, args: Sequence[str], timeout: int = 120) -> CliResult:
         """Run one sidecar command and capture its text output.
 

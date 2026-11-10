@@ -320,6 +320,33 @@ def test_environment_points_backup_and_state_at_home(client, fake_log, tmp_path)
     assert env["PYTHONIOENCODING"] == "utf-8"
 
 
+def test_set_adb_path_changes_the_next_probe_environment(client, fake_log, tmp_path):
+    verified = tmp_path / "downloaded-platform-tools" / "adb.exe"
+    verified.parent.mkdir()
+    verified.write_bytes(b"")
+
+    client.set_adb_path(verified)
+    client.probe()
+
+    assert fake_log.last_env()["ADB"] == str(verified)
+
+
+def test_set_adb_path_accepts_a_path_object(client, fake_log, tmp_path):
+    verified = tmp_path / "other" / "adb.exe"
+    verified.parent.mkdir()
+    verified.write_bytes(b"")
+
+    client.set_adb_path(Path(verified))
+    client.probe()
+
+    assert fake_log.last_env()["ADB"] == str(verified)
+
+
+def test_set_adb_path_rejects_an_empty_value(client):
+    with pytest.raises(ValueError):
+        client.set_adb_path("   ")
+
+
 def test_missing_executable_raises_cli_error(tmp_path):
     client = CliClient([str(tmp_path / "does-not-exist.exe")])
     with pytest.raises(CliError):

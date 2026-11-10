@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -376,6 +376,13 @@ class MainWindow(QMainWindow):
                 "could not save the language setting"
             )
         self.retranslate()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        for page in (self.setup_page, self.connect_page):
+            shutdown = getattr(page, "shutdown", None)
+            if callable(shutdown):
+                shutdown()
+        super().closeEvent(event)
 
     def retranslate(self) -> None:
         tr = self.context.translator.tr

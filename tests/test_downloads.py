@@ -8,6 +8,7 @@ from cleanyourphone_app.services.downloads import (
     PLATFORM_TOOLS_SHA256,
     PLATFORM_TOOLS_URL,
     PLATFORM_TOOLS_VERSION,
+    DownloadCancelled,
     DownloadError,
     PlatformToolsDownloader,
 )
@@ -40,6 +41,52 @@ def test_hash_mismatch_leaves_no_adb(tmp_path):
     with pytest.raises(DownloadError):
         downloader.download(tmp_path)
     assert not (tmp_path / "platform-tools" / "adb.exe").exists()
+
+
+def test_cancel_before_the_fetch_leaves_nothing(tmp_path):
+    opened = []
+
+    def opener(url):
+        opened.append(url)
+        return io.BytesIO(b"archive")
+
+    downloader = PlatformToolsDownloader(
+        url="https://example.invalid/tools.zip",
+        sha256="0" * 64,
+        opener=opener,
+    )
+
+    with pytest.raises(DownloadCancelled):
+        downloader.download(tmp_path, cancel=lambda: True)
+
+    assert opened == []
+    assert not (tmp_path / "platform-tools").exists()
+
+
+def test_cancel_during_the_fetch_leaves_nothing(tmp_path):
+    class CountedResponse:
+        def __init__(self):
+            self.reads = 0
+
+        def read(self, size):
+            self.reads += 1
+            return b"archive" if self.reads == 1 else b""
+
+        def close(self):
+            pass
+
+    response = CountedResponse()
+    downloader = PlatformToolsDownloader(
+        url="https://example.invalid/tools.zip",
+        sha256="0" * 64,
+        opener=lambda _: response,
+    )
+
+    with pytest.raises(DownloadCancelled):
+        downloader.download(tmp_path, cancel=lambda: response.reads >= 1)
+
+    assert response.reads == 1
+    assert not (tmp_path / "platform-tools").exists()
 
 
 def test_extracts_only_platform_tools(tmp_path):

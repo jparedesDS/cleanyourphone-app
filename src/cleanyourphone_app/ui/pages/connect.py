@@ -9,6 +9,7 @@ supported version and stays available when pairing fails.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QRegularExpression, Qt
@@ -25,7 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from cleanyourphone_app.domain.session import SessionError, Transport
-from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
+from cleanyourphone_app.services.adb import AdbInfo, DeviceEntry
 from cleanyourphone_app.services.adb_wifi import (
     MdnsService,
     MdnsServices,
@@ -33,6 +34,7 @@ from cleanyourphone_app.services.adb_wifi import (
     WifiError,
 )
 from cleanyourphone_app.ui.pages.base import Page
+from cleanyourphone_app.ui.workers import BackgroundCall
 
 if TYPE_CHECKING:
     from cleanyourphone_app.ui.app import AppContext
@@ -69,11 +71,20 @@ class ConnectPage(Page):
     def __init__(self, context: AppContext, parent: QWidget | None = None) -> None:
         super().__init__(context, parent)
         self._services: MdnsServices | None = None
-        self._online_devices: list[DeviceEntry] = []
         self._error_key: str | None = None
         self._success_key: str | None = None
+        self._busy = False
+        self._task: str | None = None
+        self._call = BackgroundCall(self)
+        self._call.succeeded.connect(self._task_succeeded)
+        self._call.failed.connect(self._task_failed)
+        self._call.finished.connect(self._task_finished)
         self._build_ui()
         self.retranslate()
+
+    @property
+    def busy(self) -> bool:
+        return self._busy
 
     # ------------------------------------------------------------------ build
 
@@ -94,6 +105,11 @@ class ConnectPage(Page):
         self.tabs.setObjectName("ConnectTabs")
         self.tabs.addTab(self._build_wifi_tab(), "")
         self.tabs.addTab(self._build_usb_tab(), "")
+
+        self.busy_label = QLabel(self)
+        self.busy_label.setProperty("role", "muted")
+        self.busy_label.setWordWrap(True)
+        self.busy_label.hide()
 
         self.error_label = QLabel(self)
         self.error_label.setProperty("role", "error")
@@ -127,6 +143,7 @@ class ConnectPage(Page):
         layout.addWidget(self.title_label)
         layout.addWidget(self.body_label)
         layout.addWidget(self.tabs, 1)
+        layout.addWidget(self.busy_label)
         layout.addWidget(self.error_label)
         layout.addWidget(self.success_label)
         layout.addLayout(failure_row)
@@ -264,19 +281,74 @@ class ConnectPage(Page):
         self.retry_button.hide()
         self.usb_fallback_button.hide()
 
+    def _set_busy(self, task: str | None, busy: bool) -> None:
+        self._busy = busy
+        self._task = task if busy else None
+        for widget in (
+            self.ip_field,
+            self.code_field,
+            self.discover_button,
+            self.connect_button,
+            self.usb_connect_button,
+            self.device_combo,
+        ):
+            widget.setEnabled(not busy)
+        if busy:
+            self._error_key = None
+            self._success_key = None
+            self.error_label.hide()
+            self.success_label.hide()
+            self.busy_label.setText(self.tr("common.loading"))
+            self.busy_label.show()
+        else:
+            self.busy_label.hide()
+
+    def _start_task(self, task: str, call: Callable[[], object]) -> None:
+        if self._busy or self._call.active:
+            return
+
+        self._set_busy(task, True)
+        if not self._call.start(call):
+            self._set_busy(None, False)
+
+    def _task_finished(self) -> None:
+        self._set_busy(None, False)
+
+    def _task_succeeded(self, result: object) -> None:
+        if self._task == "discover":
+            self._discovery_succeeded(result)
+        elif self._task == "wifi_pair":
+            self._pairing_succeeded(result)
+        elif self._task == "usb":
+            self._usb_succeeded(result)
+
+    def _task_failed(self, error: object) -> None:
+        if self._task == "usb":
+            self._show_error("connect.failed")
+            self._show_failure_controls(usb_fallback=False)
+        elif self._task == "wifi_pair":
+            self._show_error("connect.pairing_failed")
+            self._show_failure_controls()
+        else:
+            self._show_error("connect.failed")
+            self._show_failure_controls()
+
     # ---------------------------------------------------------------- actions
 
     def discover(self) -> None:
         """Ask ADB for the pairing and connect endpoints near this PC."""
+        if self._busy:
+            return
         connector = self._connector()
         if connector is None:
             self._show_error("connect.adb_missing")
             self._show_failure_controls()
             return
 
-        try:
-            services = connector.discover()
-        except (WifiError, OSError):
+        self._start_task("discover", connector.discover)
+
+    def _discovery_succeeded(self, services: object) -> None:
+        if not isinstance(services, MdnsServices):
             self._show_error("connect.failed")
             self._show_failure_controls()
             return
@@ -305,55 +377,63 @@ class ConnectPage(Page):
         self.code_field.setFocus()
 
     def _connect_wifi(self) -> None:
+        if self._busy:
+            return
         code = self.code_field.text().strip()
-        attempted = False
-        try:
-            if _CODE_PATTERN.fullmatch(code) is None:
-                self._show_error("connect.invalid_code")
-                self._show_failure_controls()
-                return
+        if _CODE_PATTERN.fullmatch(code) is None:
+            self._show_error("connect.invalid_code")
+            self._show_failure_controls()
+            return
 
-            address = self.ip_field.text().strip()
-            pairing = parse_endpoint(address) if address else None
-            if address and pairing is None:
-                self._show_error("connect.invalid_address")
-                self._show_failure_controls()
-                return
+        address = self.ip_field.text().strip()
+        pairing = parse_endpoint(address) if address else None
+        if address and pairing is None:
+            self._show_error("connect.invalid_address")
+            self._show_failure_controls()
+            return
 
-            connector = self._connector()
-            if connector is None:
-                self._show_error("connect.adb_missing")
-                self._show_failure_controls()
-                return
+        connector = self._connector()
+        if connector is None:
+            self._show_error("connect.adb_missing")
+            self._show_failure_controls()
+            return
 
-            services = self._services
-            if services is None or services.connect is None:
-                services = connector.discover()
-                self._services = services
-            if pairing is None:
-                pairing = services.pairing
-            if pairing is None or services.connect is None:
-                self._show_error("connect.connection_failed")
-                self._show_failure_controls()
-                return
+        services = self._services
+        handoff_code = code
 
-            self._services = services
-            attempted = True
-            serial = connector.pair_and_connect(code, pairing, services.connect)
-        except WifiError:
+        def call():
+            found = services
+            if found is None or found.connect is None:
+                found = connector.discover()
+            endpoint = pairing or found.pairing
+            if endpoint is None or found.connect is None:
+                raise WifiError("the pairing or connect endpoint was not found")
+            serial = connector.pair_and_connect(
+                handoff_code, endpoint, found.connect
+            )
+            return found, serial
+
+        # The field is cleared at the handoff; only the worker closure holds the
+        # code until adb pair returns, and the page never keeps or logs it.
+        self.code_field.clear()
+        self._start_task("wifi_pair", call)
+
+    def _pairing_succeeded(self, result: object) -> None:
+        if not isinstance(result, tuple) or len(result) != 2:
             self._show_error("connect.pairing_failed")
             self._show_failure_controls()
             return
-        except (OSError, ValueError, TypeError):
+        services, serial = result
+        if (
+            not isinstance(services, MdnsServices)
+            or not isinstance(serial, str)
+            or not serial.strip()
+        ):
             self._show_error("connect.pairing_failed")
             self._show_failure_controls()
             return
-        finally:
-            # The code is never kept after it has been handed to adb.
-            if attempted:
-                self.code_field.clear()
-            code = ""
 
+        self._services = services
         if not self._record(serial, Transport.WIFI):
             self._show_failure_controls()
             return
@@ -362,15 +442,20 @@ class ConnectPage(Page):
         self._go("check")
 
     def _connect_usb(self) -> None:
+        if self._busy:
+            return
         info = self._adb_info()
         if info is None:
             self._show_error("connect.adb_missing")
             self._show_failure_controls(usb_fallback=False)
             return
 
-        try:
-            entries = list(self.context.device_lister(info))
-        except (AdbError, OSError, TypeError):
+        self._start_task(
+            "usb", lambda: list(self.context.device_lister(info))
+        )
+
+    def _usb_succeeded(self, entries: object) -> None:
+        if not isinstance(entries, (list, tuple)):
             self._show_error("connect.failed")
             self._show_failure_controls(usb_fallback=False)
             return
@@ -379,25 +464,31 @@ class ConnectPage(Page):
         if not online:
             self.device_label.hide()
             self.device_combo.hide()
-            self._online_devices = []
             self._show_error("connect.no_devices")
             self._show_failure_controls(usb_fallback=False)
             return
 
-        if len(online) > 1 and not self.device_combo.isVisibleTo(self):
-            self._populate_devices(online)
-            self.device_label.show()
-            self.device_combo.show()
-            self._show_error("connect.multiple_devices")
-            return
-
-        if len(online) > 1:
-            index = self.device_combo.currentIndex()
-            chosen = online[index] if 0 <= index < len(online) else online[0]
-        else:
+        if len(online) == 1:
             chosen = online[0]
             self.device_label.hide()
             self.device_combo.hide()
+        else:
+            selected_serial = self.device_combo.currentData()
+            chosen = next(
+                (
+                    entry
+                    for entry in online
+                    if selected_serial is not None
+                    and entry.serial == selected_serial
+                ),
+                None,
+            )
+            if chosen is None:
+                self._populate_devices(online)
+                self.device_label.show()
+                self.device_combo.show()
+                self._show_error("connect.multiple_devices")
+                return
 
         if not self._record(chosen.serial, transport_for(chosen)):
             self._show_failure_controls(usb_fallback=False)
@@ -407,13 +498,28 @@ class ConnectPage(Page):
         self._go("check")
 
     def _populate_devices(self, online: list[DeviceEntry]) -> None:
-        self._online_devices = online
+        previous = self.device_combo.currentData()
+        self.device_combo.blockSignals(True)
         self.device_combo.clear()
+        self.device_combo.addItem(self.tr("connect.choose_device"), None)
+        placeholder = self.device_combo.model().item(0)
+        if placeholder is not None:
+            placeholder.setEnabled(False)
         for entry in online:
             label = entry.model or entry.serial
             self.device_combo.addItem(
                 f"{label} · {entry.transport.upper()}", entry.serial
             )
+        self.device_combo.setCurrentIndex(0)
+        if previous is not None:
+            index = self.device_combo.findData(previous)
+            if index > 0:
+                self.device_combo.setCurrentIndex(index)
+        self.device_combo.blockSignals(False)
+
+    def shutdown(self) -> None:
+        """Wait briefly for an active service call when the window is closing."""
+        self._call.shutdown(5000)
 
     # ------------------------------------------------------------ translation
 
@@ -435,10 +541,13 @@ class ConnectPage(Page):
 
         self.retry_button.setText(self.tr("connect.retry"))
         self.usb_fallback_button.setText(self.tr("connect.use_usb"))
+        self.busy_label.setText(self.tr("common.loading"))
         if self._error_key is not None:
             self.error_label.setText(self.tr(self._error_key))
         if self._success_key is not None:
             self.success_label.setText(self.tr(self._success_key))
+        if self.device_combo.count():
+            self.device_combo.setItemText(0, self.tr("connect.choose_device"))
 
         self.title_label.setAccessibleName(self.title_label.text())
         self.body_label.setAccessibleName(self.body_label.text())

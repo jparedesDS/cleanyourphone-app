@@ -46,6 +46,8 @@
   "setup.invalid_adb": "Ese archivo no es un ADB válido o es anterior a la versión 31.0.0.",
   "setup.download_failed": "No se pudo descargar Platform-Tools. No se ha cambiado nada.",
   "setup.hash_failed": "La descarga no superó la comprobación de seguridad. No se ha instalado nada.",
+  "setup.download_cancelled": "Descarga cancelada. No se ha instalado nada.",
+  "setup.cancelling": "Cancelando...",
   "setup.ready": "ADB está listo.",
   "connect.title": "Conecta tu móvil",
   "connect.body": "Elige Wi-Fi para Android 11 o posterior, o usa un cable USB.",

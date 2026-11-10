@@ -1,12 +1,13 @@
 """First-run ADB setup: consent, safe download and the manual picker."""
 
+import threading
 from pathlib import Path
 
-from PySide6.QtWidgets import QFileDialog
+from PySide6.QtWidgets import QFileDialog, QPushButton
 
 from cleanyourphone_app.i18n.translator import Translator
 from cleanyourphone_app.services.adb import AdbInfo
-from cleanyourphone_app.services.downloads import DownloadError
+from cleanyourphone_app.services.downloads import DownloadCancelled, DownloadError
 from cleanyourphone_app.ui.app import AppContext
 from cleanyourphone_app.ui.main_window import MainWindow
 from cleanyourphone_app.ui.pages.setup import ANDROID_SDK_TERMS_URL, SetupPage
@@ -40,13 +41,54 @@ class FakeDownloader:
         self.error = error
         self.calls = []
 
-    def download(self, destination):
+    def download(self, destination, *, cancel=None):
         destination = Path(destination)
         self.calls.append(destination)
+        if cancel is not None and cancel():
+            raise DownloadCancelled("cancelled")
         if self.error is not None:
             raise self.error
         assert self.result is not None
         return Path(self.result)
+
+
+class BlockingDownloader:
+    """A non-network downloader that holds the worker until released."""
+
+    def __init__(self, *, result=None, error=None):
+        self.result = result
+        self.error = error
+        self.calls = []
+        self.started = threading.Event()
+        self.release = threading.Event()
+        self.cancelled = False
+
+    def download(self, destination, *, cancel=None):
+        self.calls.append(Path(destination))
+        self.started.set()
+        while True:
+            if cancel is not None and cancel():
+                self.cancelled = True
+                raise DownloadCancelled("cancelled")
+            if self.release.wait(0.01):
+                break
+        if self.error is not None:
+            raise self.error
+        assert self.result is not None
+        return Path(self.result)
+
+
+class RecordingCli:
+    """Records the ADB path the next probe would use."""
+
+    def __init__(self):
+        self.adb_path: str | None = None
+
+    def set_adb_path(self, path):
+        self.adb_path = str(path)
+
+    def probe(self):
+        return self.adb_path
 
 
 class DeviceLister:
@@ -133,6 +175,8 @@ def test_successful_download_stores_adb_and_moves_to_welcome(qtbot, tmp_path):
 
     page.consent_checkbox.setChecked(True)
     page.download_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "welcome", timeout=3000)
+    qtbot.waitUntil(lambda: page.busy is False, timeout=3000)
 
     assert downloader.calls == [tmp_path]
     assert locator.cache_dir == tmp_path
@@ -155,6 +199,8 @@ def test_hash_failure_stays_on_setup_and_never_runs_adb(qtbot, tmp_path):
 
     page.consent_checkbox.setChecked(True)
     page.download_button.click()
+    qtbot.waitUntil(lambda: page.error_label.text() != "", timeout=3000)
+    qtbot.waitUntil(lambda: page.busy is False, timeout=3000)
 
     assert page.next_page is None
     assert targets == []
@@ -176,6 +222,8 @@ def test_generic_download_failure_stays_on_setup(qtbot, tmp_path):
 
     page.consent_checkbox.setChecked(True)
     page.download_button.click()
+    qtbot.waitUntil(lambda: page.error_label.text() != "", timeout=3000)
+    qtbot.waitUntil(lambda: page.busy is False, timeout=3000)
 
     assert page.next_page is None
     assert targets == []
@@ -183,6 +231,66 @@ def test_generic_download_failure_stays_on_setup(qtbot, tmp_path):
     assert lister.calls == []
     assert locator.accept_calls == []
     assert context.adb_path is None
+
+
+def test_download_runs_in_a_worker_and_disables_the_page(qtbot, tmp_path):
+    adb_path = tmp_path / "platform-tools" / "adb.exe"
+    downloader = BlockingDownloader(result=adb_path)
+    context, _, _, _ = make_context(tmp_path, downloader=downloader)
+    page = SetupPage(context)
+    qtbot.addWidget(page)
+
+    page.consent_checkbox.setChecked(True)
+    page.download_button.click()
+    qtbot.waitUntil(downloader.started.is_set, timeout=3000)
+
+    assert page.busy is True
+    assert page.download_button.isEnabled() is False
+    assert page.consent_checkbox.isEnabled() is False
+    assert page.have_adb_button.isEnabled() is False
+    assert page.download_progress is not None
+
+    downloader.release.set()
+    qtbot.waitUntil(lambda: page.next_page == "welcome", timeout=3000)
+    qtbot.waitUntil(lambda: page.busy is False, timeout=3000)
+
+    assert page.download_progress is None
+    assert context.adb_path == str(adb_path)
+
+
+def test_cancel_stops_the_download_without_installing_adb(qtbot, tmp_path):
+    adb_path = tmp_path / "platform-tools" / "adb.exe"
+    downloader = BlockingDownloader(result=adb_path)
+    context, locator, _, lister = make_context(tmp_path, downloader=downloader)
+    page = SetupPage(context)
+    qtbot.addWidget(page)
+    targets = []
+    page.navigate.connect(targets.append)
+
+    page.consent_checkbox.setChecked(True)
+    page.download_button.click()
+    qtbot.waitUntil(downloader.started.is_set, timeout=3000)
+
+    progress = page.download_progress
+    assert progress is not None
+    cancel = next(
+        button
+        for button in progress.findChildren(QPushButton)
+        if button.text() == context.translator.tr("common.cancel")
+    )
+    cancel.click()
+    qtbot.waitUntil(lambda: page.busy is False, timeout=3000)
+
+    assert downloader.cancelled is True
+    assert page.next_page is None
+    assert targets == []
+    assert context.adb_path is None
+    assert page.error_label.text() == ""
+    assert page.status_label.text() == context.translator.tr(
+        "setup.download_cancelled"
+    )
+    assert lister.calls == []
+    assert locator.accept_calls == []
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +394,10 @@ def test_successful_download_from_the_window_continues_the_flow(qtbot, tmp_path)
     page = window.setup_page
     page.consent_checkbox.setChecked(True)
     page.download_button.click()
+    qtbot.waitUntil(
+        lambda: window.current_page_name == "welcome", timeout=3000
+    )
+    qtbot.waitUntil(lambda: page.busy is False, timeout=3000)
 
     assert window.current_page_name == "welcome"
     assert context.adb_info is not None
@@ -308,3 +420,15 @@ def test_startup_accepts_the_saved_adb_path(qtbot, tmp_path):
     assert window.current_page_name == "welcome"
     assert context.adb_info is info
     assert locator.find_calls == 0
+
+
+def test_use_adb_updates_the_cli_environment(tmp_path):
+    cli = RecordingCli()
+    context, _, _, _ = make_context(tmp_path, cli=cli)
+    verified = tmp_path / "tools" / "adb.exe"
+    verified.parent.mkdir()
+    verified.write_bytes(b"")
+
+    context.use_adb(make_info(verified))
+
+    assert cli.probe() == str(verified)
