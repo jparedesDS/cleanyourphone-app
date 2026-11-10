@@ -41,7 +41,7 @@ jobs:
         run: |
           $version = dist\CleanYourPhone\resources\cli\cleanyourphone.exe --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if ($version -ne "CleanYourPhone 0.3.0") {
+          if ($version -ne "CleanYourPhone 0.3.1") {
             throw "Unexpected sidecar version: $version"
           }
 
