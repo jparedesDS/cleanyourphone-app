@@ -97,6 +97,7 @@ class ReviewPage(Page):
         self._has_run = False
         self._mode = "load"
         self._error_key: str | None = None
+        self._documented = False
         self._providers_requested = False
         self.model: ReviewModel | None = None
         self.row_widgets: dict[str, PackageRow] = {}
@@ -171,6 +172,26 @@ class ReviewPage(Page):
         self.body_label = QLabel(self)
         self.body_label.setProperty("role", "body")
         self.body_label.setWordWrap(True)
+
+        self.documented_card = QFrame(self)
+        self.documented_card.setObjectName("DocumentedNotice")
+        documented_layout = QVBoxLayout(self.documented_card)
+        documented_layout.setContentsMargins(14, 12, 14, 12)
+        documented_layout.setSpacing(8)
+
+        self.documented_label = QLabel(self.documented_card)
+        self.documented_label.setProperty("role", "warning")
+        self.documented_label.setWordWrap(True)
+
+        self.documented_ack = QCheckBox(self.documented_card)
+        self.documented_ack.setObjectName("review_documented_ack")
+        self.documented_ack.toggled.connect(
+            lambda checked=False: self._update_selection_state()
+        )
+
+        documented_layout.addWidget(self.documented_label)
+        documented_layout.addWidget(self.documented_ack)
+        self.documented_card.hide()
 
         self.busy_label = QLabel(self)
         self.busy_label.setProperty("role", "muted")
@@ -331,6 +352,7 @@ class ReviewPage(Page):
 
         layout.addWidget(self.title_label)
         layout.addWidget(self.body_label)
+        layout.addWidget(self.documented_card)
         layout.addWidget(self.busy_label)
         layout.addWidget(self.scroll, 1)
         layout.addWidget(self.backup_caption)
@@ -397,10 +419,14 @@ class ReviewPage(Page):
         self.backup_caption.hide()
         self.backup_label.clear()
         self.backup_label.hide()
+        self._set_documented_mode(False)
         self._update_selection_state()
 
     def _continue_to_apply(self, checked: bool = False) -> None:
         if self._busy or self.model is None:
+            return
+        if self._documented and not self.documented_ack.isChecked():
+            self._update_selection_state()
             return
         selected = self.model.selected_packages()
         if not selected:
@@ -493,6 +519,7 @@ class ReviewPage(Page):
             self._show_error("review.plan_changed", retry=mode == "load")
             if mode == "load":
                 self.model = None
+                self._set_documented_mode(False)
                 self._rebuild_rows()
                 self._update_selection_state()
             return
@@ -502,6 +529,7 @@ class ReviewPage(Page):
             return
 
         self.model = ReviewModel.from_plan(result)
+        self._set_documented_mode(result.verification == "documented")
         self._rebuild_rows()
         self._clear_error()
         self._update_backup_path()
@@ -618,11 +646,20 @@ class ReviewPage(Page):
 
     # ---------------------------------------------------------------- state
 
+    def _set_documented_mode(self, documented: bool) -> None:
+        self._documented = documented
+        self.documented_card.setVisible(documented)
+        if documented:
+            self.documented_ack.blockSignals(True)
+            self.documented_ack.setChecked(False)
+            self.documented_ack.blockSignals(False)
+
     def _update_selection_state(self) -> None:
         count = self.selected_count
         self.continue_button.setText(self.tr("review.disable_n", count=count))
+        acknowledged = not self._documented or self.documented_ack.isChecked()
         self.continue_button.setEnabled(
-            self.model is not None and count > 0 and not self._busy
+            self.model is not None and count > 0 and not self._busy and acknowledged
         )
         self.empty_label.setVisible(
             self.model is not None and count == 0 and not self._busy
@@ -671,6 +708,8 @@ class ReviewPage(Page):
     def retranslate(self) -> None:
         self.title_label.setText(self.tr("review.title"))
         self.body_label.setText(self.tr("review.body"))
+        self.documented_label.setText(self.tr("review.documented_warning"))
+        self.documented_ack.setText(self.tr("review.documented_ack"))
         self.busy_label.setText(self.tr("review.loading"))
         self.tested_heading.setText(self.tr("review.tested"))
         self.ask_heading.setText(self.tr("review.ask"))

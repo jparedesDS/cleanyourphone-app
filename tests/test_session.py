@@ -135,6 +135,39 @@ def test_connected_stores_the_exact_serial_and_probe():
     assert s.transport is Transport.USB
     assert s.probe is phone
     assert s.profile_id == "pixel-8"
+    assert s.verification == "device"
+
+
+def test_connected_records_a_documented_profile_explicitly():
+    s = SessionController()
+    s.start()
+    s.connected(
+        "usb-1",
+        Transport.USB,
+        probe(auto_apply_profiles=(), documented_profiles=("pixel-8-doc",)),
+        profile_id="pixel-8-doc",
+        verification="documented",
+    )
+
+    assert s.profile_id == "pixel-8-doc"
+    assert s.verification == "documented"
+
+
+def test_connected_rejects_an_unknown_verification_level():
+    s = SessionController()
+    s.start()
+
+    with pytest.raises(ValueError):
+        s.connected(
+            "usb-1",
+            Transport.USB,
+            probe(),
+            profile_id="pixel-8",
+            verification="reference",
+        )
+
+    assert s.serial is None
+    assert s.verification == "device"
 
 
 def test_failed_connected_leaves_the_session_unchanged():
@@ -199,6 +232,7 @@ def test_reset_after_a_block_returns_to_welcome_and_clears_everything():
     # directly to prove reset clears every recorded fact, not only the device.
     s.probe = probe()
     s.profile_id = "pixel-8"
+    s.verification = "documented"
     s.backup_path = Path("C:/backup/one")
     s.selected_packages = ("com.example.one",)
     s.completed_batches = 2
@@ -211,6 +245,7 @@ def test_reset_after_a_block_returns_to_welcome_and_clears_everything():
     assert s.transport is None
     assert s.probe is None
     assert s.profile_id is None
+    assert s.verification == "device"
     assert s.backup_path is None
     assert s.selected_packages == ()
     assert s.completed_batches == 0

@@ -85,6 +85,7 @@ class SessionController:
         self.transport: Transport | None = None
         self.probe: ProbeData | None = None
         self.profile_id: str | None = None
+        self.verification: str = "device"
         self.backup_path: Path | None = None
         self.selected_packages: tuple[str, ...] = ()
         self.completed_batches = 0
@@ -154,8 +155,14 @@ class SessionController:
         transport: Transport,
         probe: ProbeData,
         profile_id: str | None = None,
+        verification: str = "device",
     ) -> None:
-        """Record the exact device the rest of the session will talk to."""
+        """Record the exact device the rest of the session will talk to.
+
+        ``verification`` is ``device`` for a tested build or ``documented`` for
+        a manual, one-package-at-a-time review. The UI never treats a
+        documented profile as auto-applicable.
+        """
         self._require_state(
             SessionState.WELCOME,
             SessionState.CONNECTING,
@@ -168,11 +175,14 @@ class SessionController:
             _require_text(profile_id, "profile id") if profile_id is not None else None
         )
         checked_transport = self._require_transport(transport)
+        if verification not in ("device", "documented"):
+            raise ValueError("verification must be 'device' or 'documented'")
 
         self.transport = checked_transport
         self.serial = checked_serial
         self.probe = checked_probe
         self.profile_id = checked_profile
+        self.verification = verification
         self.blocked_reason = None
         self.blocked_link = None
         self.error_message = None
@@ -239,6 +249,7 @@ class SessionController:
         self.transport = None
         self.probe = None
         self.profile_id = None
+        self.verification = "device"
         self.backup_path = None
         self.selected_packages = ()
         self.completed_batches = 0

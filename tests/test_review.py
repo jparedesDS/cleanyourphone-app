@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from cleanyourphone_app.domain.models import PlanData, PlanRow
-from cleanyourphone_app.domain.review import ReviewModel
+from cleanyourphone_app.domain.review import ReviewModel, plan_allows_review
 
 
 def plan_row(action: str, package: str, why: str = "", breaks: str = "", reason: str = ""):
@@ -47,6 +47,39 @@ def plan_with_blocked_row() -> PlanData:
 # ---------------------------------------------------------------------------
 # The brief's exact assertions
 # ---------------------------------------------------------------------------
+
+
+def test_documented_plan_with_only_manual_rows_is_allowed():
+    plan = PlanData(
+        profile_id="pixel-8-documented",
+        match=True,
+        verification="documented",
+        auto_apply=False,
+        rows=(plan_row("ASK", "com.example.ask"),),
+    )
+    assert plan_allows_review(plan) is True
+
+
+def test_documented_plan_with_a_disable_row_is_rejected():
+    plan = PlanData(
+        profile_id="pixel-8-documented",
+        match=True,
+        verification="documented",
+        auto_apply=False,
+        rows=(plan_row("DISABLE", "com.example.bloat"),),
+    )
+    assert plan_allows_review(plan) is False
+
+
+def test_untested_device_plan_is_still_rejected():
+    plan = PlanData(
+        profile_id="pixel-8",
+        match=True,
+        verification="device",
+        auto_apply=False,
+        rows=(plan_row("ASK", "com.example.ask"),),
+    )
+    assert plan_allows_review(plan) is False
 
 
 def test_disable_rows_are_checked_and_ask_rows_are_not():

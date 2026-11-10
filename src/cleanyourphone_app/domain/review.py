@@ -32,10 +32,24 @@ def _unique(packages: list[str]) -> tuple[str, ...]:
 
 
 def plan_allows_review(plan: PlanData) -> bool:
-    """Only an exact, tested, auto-applicable device plan may reach Review."""
+    """Allow a tested device plan or a documented manual plan.
+
+    A documented plan is accepted only when the CLI reports it as
+    non-automatic and every row is manual (no ``DISABLE`` rows). The Review
+    page still requires its explicit acknowledgement and the Apply page uses
+    one package per batch.
+    """
     if not isinstance(plan, PlanData):
         raise TypeError("plan must be a PlanData")
-    return plan.match and plan.verification == "device" and plan.auto_apply
+    if not plan.match:
+        return False
+    if plan.verification == "device":
+        return plan.auto_apply
+    if plan.verification == "documented":
+        return not plan.auto_apply and all(
+            row.action.strip().upper() != DISABLE for row in plan.rows
+        )
+    return False
 
 
 class ReviewModel:

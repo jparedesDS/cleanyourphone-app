@@ -20,15 +20,20 @@ class SupportedDecision:
     reason: str
     profile_ids: tuple[str, ...] = ()
     link: str | None = None
+    verification: str = "device"
 
 
 def decide_support(probe: ProbeData) -> SupportedDecision:
     """Return whether the app may change packages on this phone.
 
     ``reason`` is a stable token for the UI: ``tv``, ``managed_unknown``,
-    ``managed``, ``users_unknown``, ``multi_user``, ``android_too_old`` or
-    ``no_device_profile``. Only ``no_device_profile`` links to the skill site;
-    the other blockers are safety rules the skill cannot bypass either.
+    ``managed``, ``users_unknown``, ``multi_user``, ``android_too_old``,
+    ``documented`` or ``no_device_profile``. Only ``no_device_profile`` links to
+    the skill site; the other blockers are safety rules the skill cannot bypass
+    either.
+
+    A documented profile is allowed into the manual review, never auto-apply.
+    The UI must show its warning and require an explicit acknowledgement.
     """
     if probe.is_tv:
         return SupportedDecision(allowed=False, reason="tv")
@@ -42,14 +47,22 @@ def decide_support(probe: ProbeData) -> SupportedDecision:
         return SupportedDecision(allowed=False, reason="multi_user")
     if probe.sdk < MIN_SDK:
         return SupportedDecision(allowed=False, reason="android_too_old")
-    if not probe.auto_apply_profiles:
+    if probe.auto_apply_profiles:
         return SupportedDecision(
-            allowed=False,
-            reason="no_device_profile",
-            link=SKILL_URL,
+            allowed=True,
+            reason="supported",
+            profile_ids=tuple(probe.auto_apply_profiles),
+            verification="device",
+        )
+    if probe.documented_profiles:
+        return SupportedDecision(
+            allowed=True,
+            reason="documented",
+            profile_ids=tuple(probe.documented_profiles),
+            verification="documented",
         )
     return SupportedDecision(
-        allowed=True,
-        reason="supported",
-        profile_ids=tuple(probe.auto_apply_profiles),
+        allowed=False,
+        reason="no_device_profile",
+        link=SKILL_URL,
     )

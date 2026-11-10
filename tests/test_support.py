@@ -70,25 +70,29 @@ def test_skill_url_is_the_public_site():
     assert SKILL_URL == "https://jparedesds.github.io/cleanyourphone-web/"
 
 
-def test_documented_profile_alone_is_not_enough():
+def test_documented_profile_is_allowed_for_manual_review():
     decision = decide_support(
         probe(auto_apply_profiles=(), documented_profiles=("pixel-8-documented",))
     )
-    assert decision.allowed is False
-    assert decision.reason == "no_device_profile"
-    assert decision.link == SKILL_URL
+    assert decision.allowed is True
+    assert decision.reason == "documented"
+    assert decision.profile_ids == ("pixel-8-documented",)
+    assert decision.verification == "documented"
+    assert decision.link is None
 
 
 def test_one_exact_profile_is_allowed():
     decision = decide_support(probe(auto_apply_profiles=("pixel-8",)))
     assert decision.allowed is True
     assert decision.profile_ids == ("pixel-8",)
+    assert decision.verification == "device"
 
 
 def test_multiple_exact_profiles_are_allowed_for_selection():
     decision = decide_support(probe(auto_apply_profiles=("a", "b")))
     assert decision.allowed is True
     assert decision.profile_ids == ("a", "b")
+    assert decision.verification == "device"
 
 
 def test_sdk_26_is_new_enough():

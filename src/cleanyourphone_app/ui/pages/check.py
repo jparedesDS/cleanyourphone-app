@@ -52,6 +52,7 @@ class CheckPage(Page):
         self._busy = False
         self._error_key: str | None = None
         self._probe: ProbeData | None = None
+        self._verification = "device"
         self._completed = False
         self._has_run = False
         self.blocked_reason: str | None = None
@@ -82,6 +83,12 @@ class CheckPage(Page):
         self.body_label = QLabel(self)
         self.body_label.setProperty("role", "body")
         self.body_label.setWordWrap(True)
+
+        self.documented_label = QLabel(self)
+        self.documented_label.setObjectName("check_documented_warning")
+        self.documented_label.setProperty("role", "warning")
+        self.documented_label.setWordWrap(True)
+        self.documented_label.hide()
 
         details = QWidget(self)
         self.details = details
@@ -163,6 +170,7 @@ class CheckPage(Page):
 
         layout.addWidget(self.title_label)
         layout.addWidget(self.body_label)
+        layout.addWidget(self.documented_label)
         layout.addWidget(details)
         layout.addLayout(selection)
         layout.addWidget(self.busy_label)
@@ -201,6 +209,7 @@ class CheckPage(Page):
         self._completed = False
         self._has_run = False
         self._probe = None
+        self._verification = "device"
         self.blocked_reason = None
         self.blocked_link = None
         self.blocked_decision = None
@@ -214,6 +223,8 @@ class CheckPage(Page):
         self.profile_label.hide()
         self.continue_button.hide()
         self.continue_button.setEnabled(False)
+        self.documented_label.hide()
+        self.continue_button.setText(self.tr("check.continue"))
         for label in (
             self.model_label,
             self.android_label,
@@ -236,6 +247,12 @@ class CheckPage(Page):
             return
 
         profile_ids = decision.profile_ids
+        if decision.verification == "documented":
+            if not profile_ids:
+                self._show_error("check.failed")
+                return
+            self._show_profile_choice(profile_ids, documented=True)
+            return
         if len(profile_ids) == 1:
             self._advance(result, profile_ids[0])
             return
@@ -253,7 +270,9 @@ class CheckPage(Page):
     def _probe_finished(self) -> None:
         self._set_busy(False)
 
-    def _advance(self, probe: ProbeData, profile_id: str) -> None:
+    def _advance(
+        self, probe: ProbeData, profile_id: str, verification: str | None = None
+    ) -> None:
         session = self.context.session
         serial = session.serial
         transport = session.transport
@@ -261,10 +280,11 @@ class CheckPage(Page):
             self._show_error("check.failed")
             return
 
+        mode = verification or self._verification
         try:
             # Keep the transport and serial pinned by Connect, then complete the
             # exact device record before the backup step can be reached.
-            session.connected(serial, transport, probe, profile_id)
+            session.connected(serial, transport, probe, profile_id, mode)
             session.checked(probe, profile_id)
         except (SessionError, ValueError, TypeError):
             self._show_error("check.failed")
@@ -288,7 +308,17 @@ class CheckPage(Page):
         self._clear_error()
         self._go("blocked")
 
-    def _show_profile_choice(self, profile_ids: tuple[str, ...]) -> None:
+    def _show_profile_choice(
+        self, profile_ids: tuple[str, ...], *, documented: bool = False
+    ) -> None:
+        self._verification = "documented" if documented else "device"
+        self.documented_label.setVisible(documented)
+        self.continue_button.setText(
+            self.tr(
+                "check.continue_documented" if documented else "check.continue"
+            )
+        )
+
         self.profile_combo.blockSignals(True)
         self.profile_combo.clear()
         self.profile_combo.addItem(self.tr("check.choose_profile"), None)
@@ -297,7 +327,9 @@ class CheckPage(Page):
             placeholder.setEnabled(False)
         for profile_id in profile_ids:
             self.profile_combo.addItem(profile_id, profile_id)
-        self.profile_combo.setCurrentIndex(0)
+        # A documented profile is never auto-advanced, even when it is the only
+        # match. Preselect it so the person can read the warning and continue.
+        self.profile_combo.setCurrentIndex(1 if documented and len(profile_ids) == 1 else 0)
         self.profile_combo.blockSignals(False)
 
         self.profile_label.show()
@@ -324,7 +356,7 @@ class CheckPage(Page):
         if not isinstance(self._probe, ProbeData):
             self._show_error("check.failed")
             return
-        self._advance(self._probe, profile_id)
+        self._advance(self._probe, profile_id, self._verification)
 
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
@@ -336,6 +368,7 @@ class CheckPage(Page):
             self.profile_label.hide()
             self.profile_combo.hide()
             self.continue_button.hide()
+            self.documented_label.hide()
         else:
             self.busy_label.hide()
         self._update_continue_enabled()
@@ -384,7 +417,14 @@ class CheckPage(Page):
         self.battery_caption.setText(self.tr("check.battery"))
         self.connection_caption.setText(self.tr("check.connection"))
         self.profile_label.setText(self.tr("check.profile"))
-        self.continue_button.setText(self.tr("check.continue"))
+        self.continue_button.setText(
+            self.tr(
+                "check.continue_documented"
+                if self._verification == "documented"
+                else "check.continue"
+            )
+        )
+        self.documented_label.setText(self.tr("check.documented_warning"))
         self.retry_button.setText(self.tr("check.retry"))
         self.busy_label.setText(self.tr("check.running"))
         if self.profile_combo.count():

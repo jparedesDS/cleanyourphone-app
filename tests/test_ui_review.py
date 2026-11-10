@@ -50,11 +50,16 @@ def plan_row(action: str, package: str, why: str = "", breaks: str = "", reason:
     return PlanRow(action=action, package=package, why=why, breaks=breaks, reason=reason)
 
 
-def make_plan(*rows: PlanRow, auto_apply: bool = True, match: bool = True) -> PlanData:
+def make_plan(
+    *rows: PlanRow,
+    auto_apply: bool = True,
+    match: bool = True,
+    verification: str = "device",
+) -> PlanData:
     return PlanData(
         profile_id="pixel-8",
         match=match,
-        verification="device",
+        verification=verification,
         auto_apply=auto_apply,
         rows=tuple(rows),
     )
@@ -66,6 +71,15 @@ def default_plan() -> PlanData:
         plan_row("ASK", "com.example.ask", "Optional", "Its features"),
         plan_row("BLOCKED", "com.example.blocked", reason="it is the current Home app"),
         plan_row("SKIP", "com.example.skip", reason="already disabled"),
+    )
+
+
+def documented_plan() -> PlanData:
+    return make_plan(
+        plan_row("ASK", "com.example.ask", "Optional", "Its features"),
+        plan_row("BLOCKED", "com.example.blocked", reason="it is the current Home app"),
+        auto_apply=False,
+        verification="documented",
     )
 
 
@@ -81,6 +95,17 @@ def review_context(translator: Translator | None = None) -> AppContext:
     context = AppContext.fake(translator=translator or Translator("en"))
     context.session.attach(SERIAL, Transport.USB)
     context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.checked(probe(), "pixel-8")
+    context.session.backup_done(Path("C:/backup/20260101_120000"))
+    return context
+
+
+def documented_context(translator: Translator | None = None) -> AppContext:
+    context = AppContext.fake(translator=translator or Translator("en"))
+    context.session.attach(SERIAL, Transport.USB)
+    context.session.connected(
+        SERIAL, Transport.USB, probe(), "pixel-8", "documented"
+    )
     context.session.checked(probe(), "pixel-8")
     context.session.backup_done(Path("C:/backup/20260101_120000"))
     return context
@@ -458,6 +483,32 @@ def test_checking_an_ask_row_updates_the_primary_button(qtbot):
     assert page.model.is_checked("com.example.ask") is True
     assert page.continue_button.text() == "Disable 2 apps"
     assert page.continue_button.isEnabled() is True
+
+
+def test_documented_plan_requires_acknowledgement_before_continue(qtbot):
+    cli = FakePlanCli(documented_plan(), documented_plan())
+    context = documented_context()
+    page = ReviewPage(context, cli)
+    qtbot.addWidget(page)
+    page.show()
+    wait_for_review_page(qtbot, page)
+
+    assert page.documented_card.isHidden() is False
+    assert page.documented_ack.isChecked() is False
+    assert page.model.selected_packages() == ()
+    assert page.continue_button.isEnabled() is False
+
+    page.row_widgets["com.example.ask"].checkbox.setChecked(True)
+    assert page.continue_button.isEnabled() is False
+
+    page.documented_ack.setChecked(True)
+    assert page.continue_button.isEnabled() is True
+
+    page.continue_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "apply", timeout=3000)
+
+    assert context.session.selected_packages == ("com.example.ask",)
+    assert context.session.verification == "documented"
 
 
 def test_unchecking_everything_disables_the_primary_button(qtbot):

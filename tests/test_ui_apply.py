@@ -20,6 +20,7 @@ from cleanyourphone_app.services.adb import AdbInfo
 from cleanyourphone_app.services.cli import CliResult
 from cleanyourphone_app.ui.app import AppContext
 from cleanyourphone_app.ui.main_window import MainWindow
+from cleanyourphone_app.ui.pages import apply as apply_page_module
 from cleanyourphone_app.ui.pages.apply import ApplyPage
 from cleanyourphone_app.ui.pages.done import DonePage
 
@@ -93,10 +94,13 @@ def probe() -> ProbeData:
 def review_context(
     selected=("com.example.a", "com.example.b"),
     translator: Translator | None = None,
+    verification: str = "device",
 ) -> AppContext:
     context = AppContext.fake(translator=translator or Translator("es"))
     context.session.attach(SERIAL, Transport.USB)
-    context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.connected(
+        SERIAL, Transport.USB, probe(), "pixel-8", verification
+    )
     context.session.checked(probe(), "pixel-8")
     context.session.backup_done(BACKUP)
     context.session.set_selection(selected)
@@ -434,6 +438,34 @@ def test_apply_starts_once_and_shows_batch_two_of_three(qtbot):
     qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
     assert context.session.state is SessionState.DONE
     assert context.session.completed_batches == 3
+
+
+def test_documented_apply_uses_one_package_per_batch(qtbot, monkeypatch):
+    selected = ("com.example.a", "com.example.b", "com.example.c")
+    context = review_context(selected, verification="documented")
+    captured: dict[str, object] = {}
+
+    def factory(cli, *, backup, batch_size):
+        captured["batch_size"] = batch_size
+        captured["backup"] = backup
+        return FakeApplyController()
+
+    monkeypatch.setattr(apply_page_module, "ApplyController", factory)
+    page = ApplyPage(context)
+    qtbot.addWidget(page)
+    page.show()
+
+    assert page.body_label.text() == (
+        "Perfil documentado: las apps se desactivan de una en una y el móvil "
+        "se comprueba después de cada una."
+    )
+    assert page.progress_bar.maximum() == 3
+
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    assert captured["batch_size"] == 1
+    assert captured["backup"] == BACKUP
 
 
 def test_stop_after_this_batch_stops_before_the_next_batch(qtbot):

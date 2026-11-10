@@ -65,6 +65,11 @@ QLabel[role="error"] {
     font-weight: 600;
 }
 
+QLabel[role="warning"] {
+    color: #A78BFA;
+    font-weight: 600;
+}
+
 QLabel[role="success"] {
     color: #A78BFA;
     font-weight: 600;
@@ -129,7 +134,8 @@ QFrame#PackageRow {
 }
 
 QFrame#UndoConfirm,
-QFrame#UndoFallback {
+QFrame#UndoFallback,
+QFrame#DocumentedNotice {
     background-color: #1B1C21;
     border: 1px solid #A78BFA;
     border-radius: 8px;

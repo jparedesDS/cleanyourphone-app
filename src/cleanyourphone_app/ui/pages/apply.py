@@ -69,6 +69,8 @@ class ApplyPage(Page):
         self._ads_provider: str | None = None
         self._batch_index = 1
         self._total_batches = 0
+        self._batch_size = 5
+        self._documented = False
         self._status_key: str | None = None
         self._status_kwargs: dict[str, object] = {}
         self._error_key: str | None = None
@@ -257,7 +259,14 @@ class ApplyPage(Page):
         self._applied = ()
         self._result = None
         self.last_summary = None
-        self._total_batches = len(split_batches(self._selected))
+        self._documented = session.verification == "documented"
+        self._batch_size = 1 if self._documented else 5
+        self.body_label.setText(
+            self.tr("apply.body_documented" if self._documented else "apply.body")
+        )
+        self._total_batches = len(
+            split_batches(self._selected, self._batch_size)
+        )
         self._batch_index = 1
         self._fill_packages()
         self._render_batch()
@@ -265,7 +274,11 @@ class ApplyPage(Page):
 
         controller = self._controller
         if controller is None:
-            controller = ApplyController(self._cli, backup=session.backup_path)
+            controller = ApplyController(
+                self._cli,
+                backup=session.backup_path,
+                batch_size=self._batch_size,
+            )
             self._controller = controller
 
         ads_provider = self._ads_provider
@@ -401,7 +414,12 @@ class ApplyPage(Page):
     def _sync_from_session(self) -> None:
         selected = tuple(self.context.session.selected_packages)
         self._selected = selected
-        self._total_batches = len(split_batches(selected))
+        self._documented = self.context.session.verification == "documented"
+        self._batch_size = 1 if self._documented else 5
+        self.body_label.setText(
+            self.tr("apply.body_documented" if self._documented else "apply.body")
+        )
+        self._total_batches = len(split_batches(selected, self._batch_size))
         self._batch_index = 1
         self._fill_packages()
         self._render_batch()
@@ -538,7 +556,9 @@ class ApplyPage(Page):
 
     def retranslate(self) -> None:
         self.title_label.setText(self.tr("apply.title"))
-        self.body_label.setText(self.tr("apply.body"))
+        self.body_label.setText(
+            self.tr("apply.body_documented" if self._documented else "apply.body")
+        )
         self.do_not_close_label.setText(self.tr("apply.do_not_close"))
         self.packages_caption.setText(self.tr("apply.packages"))
         self.empty_label.setText(self.tr("apply.empty_selection"))

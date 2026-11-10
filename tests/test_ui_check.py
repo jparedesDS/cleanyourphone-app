@@ -127,7 +127,36 @@ def test_supported_phone_advances_to_backup(qtbot, fake_cli, fake_context):
     assert fake_context.session.serial == USB_DEVICE.serial
     assert fake_context.session.transport is Transport.USB
     assert fake_context.session.probe is fake_cli.probe_result
+    assert fake_context.session.verification == "device"
     assert page.next_page == "backup"
+
+
+def test_documented_profile_shows_warning_and_requires_continue(
+    qtbot, fake_cli, fake_context
+):
+    fake_cli.probe_result = probe(
+        auto_apply_profiles=(),
+        documented_profiles=("pixel-8-documented",),
+    )
+    page = CheckPage(fake_context, fake_cli)
+    qtbot.addWidget(page)
+
+    run_check(qtbot, page)
+
+    assert page.next_page is None
+    assert page.profile_combo.count() == 2
+    assert page.profile_combo.currentData() == "pixel-8-documented"
+    assert page.documented_label.isHidden() is False
+    assert page.continue_button.text() == "Review documented profile"
+    assert fake_context.session.profile_id is None
+    assert fake_context.session.verification == "device"
+
+    page.continue_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "backup", timeout=3000)
+
+    assert fake_context.session.profile_id == "pixel-8-documented"
+    assert fake_context.session.verification == "documented"
+    assert fake_context.session.state is SessionState.BACKUP
 
 
 def test_no_profile_shows_skill_link(qtbot, fake_cli, fake_context):
