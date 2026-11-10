@@ -10,8 +10,9 @@ permissions:
 
 jobs:
   test:
-    name: Test (Windows, Python 3.12)
+    name: Test and package (Windows, Python 3.12)
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -28,3 +29,70 @@ jobs:
 
       - name: Test
         run: python -m pytest -q
+
+      - name: Build CLI sidecar
+        run: powershell -ExecutionPolicy Bypass -File scripts/build-cli-sidecar.ps1
+
+      - name: Build app
+        run: powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1 -SkipSidecar -SkipInstaller
+
+      - name: Smoke test the frozen sidecar version
+        shell: pwsh
+        run: |
+          $version = dist\CleanYourPhone\resources\cli\cleanyourphone.exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($version -ne "CleanYourPhone 0.2.2") {
+            throw "Unexpected sidecar version: $version"
+          }
+
+      - name: Smoke test the frozen app version
+        shell: cmd
+        run: |
+          dist\CleanYourPhone\CleanYourPhone.exe --version > app-version.txt
+          type app-version.txt
+          findstr /x /c:"CleanYourPhone app 0.1.0" app-version.txt >nul
+          if errorlevel 1 exit /b 1
+
+      - name: Smoke test the bundled profile catalog
+        shell: pwsh
+        run: |
+          $env:CLEANYOURPHONE_PROFILES = "dist\CleanYourPhone\resources\profiles"
+          $validation = dist\CleanYourPhone\resources\cli\cleanyourphone.exe validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($validation -notmatch "OK: 156 profile\(s\) valid") {
+            throw "Unexpected validate output: $validation"
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) {
+            $iscc = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "ISCC.exe was not installed by Chocolatey."
+          }
+          & $iscc /Qp packaging\installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path "dist\CleanYourPhone-Setup-0.1.0.exe")) {
+            throw "The installer was not created."
+          }
+
+      - name: Verify packaging artifacts and the real sidecar contract
+        env:
+          CLEANYOURPHONE_CLI: dist\CleanYourPhone\resources\cli\cleanyourphone.exe
+        run: python -m pytest tests/test_packaging.py tests/test_cli_contract.py -q
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: CleanYourPhone-Setup-0.1.0
+          path: dist/CleanYourPhone-Setup-0.1.0.exe
+          if-no-files-found: error

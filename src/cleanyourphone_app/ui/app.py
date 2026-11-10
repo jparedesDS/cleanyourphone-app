@@ -7,6 +7,7 @@ import os
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QLocale
@@ -35,6 +36,55 @@ from cleanyourphone_app.version import __version__
 from .main_window import MainWindow
 
 DeviceLister = Callable[[AdbInfo], list[DeviceEntry]]
+
+
+def bundle_root() -> Path:
+    """Return the directory that holds ``resources`` for this process.
+
+    A frozen onedir build keeps resources next to ``CleanYourPhone.exe``. A
+    source checkout has no bundled sidecar or profiles unless a build staged
+    them under the repository root.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    return Path(__file__).resolve().parents[3]
+
+
+def bundled_profiles_dir() -> Path | None:
+    candidate = bundle_root() / "resources" / "profiles"
+    return candidate if candidate.is_dir() else None
+
+
+def bundled_sidecar() -> Path | None:
+    candidate = bundle_root() / "resources" / "cli" / "cleanyourphone.exe"
+    return candidate if candidate.is_file() else None
+
+
+def sidecar_command() -> tuple[str, ...]:
+    """Use the bundled sidecar when present, otherwise the CLI on ``PATH``."""
+    sidecar = bundled_sidecar()
+    if sidecar is not None:
+        return (str(sidecar),)
+    return ("cleanyourphone",)
+
+
+def runtime_environment(adb_path: str | None) -> dict[str, str]:
+    """Build the environment every sidecar call inherits.
+
+    Profiles are read from the install directory; backup and state always live
+    under the user's home so an uninstall never deletes a phone backup.
+    """
+    home = Path.home() / ".cleanyourphone"
+    env = {
+        "CLEANYOURPHONE_BACKUP": str(home / "backup"),
+        "CLEANYOURPHONE_STATE": str(home),
+    }
+    profiles = bundled_profiles_dir()
+    if profiles is not None:
+        env["CLEANYOURPHONE_PROFILES"] = str(profiles)
+    if adb_path:
+        env["ADB"] = adb_path
+    return env
 
 
 @dataclass
@@ -129,13 +179,13 @@ def create_context(settings: Settings | None = None) -> AppContext:
     loaded = settings if settings is not None else Settings.load()
     system_language = Translator.for_system_language(QLocale.system().name())
     language = loaded.language or system_language.language
-    env = {"ADB": loaded.adb_path} if loaded.adb_path else None
+    env = runtime_environment(loaded.adb_path)
 
     return AppContext(
         translator=Translator(language),
         package_catalog=default_package_catalog(),
         session=SessionController(),
-        cli=CliClient(("cleanyourphone",), env=env),
+        cli=CliClient(sidecar_command(), env=env),
         adb_locator=AdbLocator(),
         wifi=None,
         settings=loaded,
