@@ -6,13 +6,14 @@ import threading
 from pathlib import Path
 
 from cleanyourphone_app.domain.apply import (
+    ApplyController,
     ApplyProgress,
     ApplyResult,
     ApplySummary,
     UndoResult,
 )
 from cleanyourphone_app.domain.batches import split_batches
-from cleanyourphone_app.domain.models import ProbeData
+from cleanyourphone_app.domain.models import PlanData, PlanRow, ProbeData
 from cleanyourphone_app.domain.session import SessionState, Transport
 from cleanyourphone_app.i18n.translator import Translator
 from cleanyourphone_app.services.adb import AdbInfo
@@ -84,15 +85,24 @@ class FakeApplyController:
         self.drop = set(drop)
         self.force_completed = force_completed
         self.run_calls: list[tuple[tuple[str, ...], str]] = []
+        self.ads_providers: list[str | None] = []
         self.disabled: list[tuple[str, ...]] = []
         self.stopped = False
         self.dropped = False
         self.batch_started = threading.Event()
         self.release = threading.Event()
 
-    def run(self, selected, profile_id, on_progress=None, should_stop=None):
+    def run(
+        self,
+        selected,
+        profile_id,
+        on_progress=None,
+        should_stop=None,
+        ads_provider=None,
+    ):
         selected = tuple(selected)
         self.run_calls.append((selected, profile_id))
+        self.ads_providers.append(ads_provider)
         batches = split_batches(selected)
         applied: list[str] = []
         for index, original in enumerate(batches, start=1):
@@ -181,6 +191,66 @@ class FakeUndoController:
         return self.fallback_result
 
 
+class FakeAdsFlowCli:
+    """Real-controller double that records package and DNS call order."""
+
+    def __init__(self, packages: tuple[str, ...]) -> None:
+        self.packages = tuple(packages)
+        self.events: list[str] = []
+        self.disable_calls: list[tuple[str, ...]] = []
+        self.dns_set_calls: list[str] = []
+        self.dns_check_calls = 0
+        self.dns_set_result = CliResult(
+            ("dns", "set", "adguard"), 0, "Private DNS set.", ""
+        )
+        self.dns_check_result = {
+            "ad_domain": "doubleclick.net",
+            "ad_ip": "0.0.0.0",
+            "ad_state": "blocked",
+            "ad_blocked": True,
+            "control_domain": "wikipedia.org",
+            "control_ip": "203.0.113.7",
+            "control_state": "ok",
+            "online": True,
+        }
+
+    def plan(self, profile_id: str) -> PlanData:
+        self.events.append("plan")
+        return PlanData(
+            profile_id="pixel-8",
+            match=True,
+            verification="device",
+            auto_apply=True,
+            rows=tuple(
+                PlanRow(action="DISABLE", package=package)
+                for package in self.packages
+            ),
+        )
+
+    def disable(self, packages) -> CliResult:
+        batch = tuple(packages)
+        self.disable_calls.append(batch)
+        self.events.append("disable:" + ",".join(batch))
+        return CliResult(("disable", *batch), 0, "", "")
+
+    def verify(self) -> dict:
+        self.events.append("verify")
+        return {"checks": [dict(check) for check in PASS_CHECKS]}
+
+    def list_disabled(self) -> set[str]:
+        return {package for batch in self.disable_calls for package in batch}
+
+    def dns_set(self, provider: str) -> CliResult:
+        self.dns_set_calls.append(provider)
+        self.events.append("dns_set:" + provider)
+        return self.dns_set_result
+
+    def dns_check(self) -> dict:
+        self.dns_check_calls += 1
+        self.events.append("dns_check")
+        return dict(self.dns_check_result)
+
+
 def make_summary(
     *,
     completed: bool = True,
@@ -190,6 +260,9 @@ def make_summary(
     remaining_disabled=(),
     stopped: bool = False,
     verify=None,
+    ads_provider=None,
+    ads_check=None,
+    ads_error=None,
 ) -> ApplySummary:
     selected = tuple(selected) if selected is not None else tuple(applied)
     result = ApplyResult(
@@ -198,6 +271,9 @@ def make_summary(
         remaining_disabled=tuple(remaining_disabled),
         rollback_verified=False,
         verify=verify if verify is not None else {"checks": [dict(PASS_CHECKS[0])]},
+        ads_provider=ads_provider,
+        ads_check=ads_check,
+        ads_error=ads_error,
     )
     return ApplySummary(
         result=result,
@@ -315,6 +391,7 @@ def test_partial_replan_never_counts_a_dropped_package(qtbot):
 
     page.apply_button.click()
     qtbot.waitUntil(lambda: page.error_label.isVisibleTo(page), timeout=3000)
+    qtbot.waitUntil(lambda: not page.busy, timeout=3000)
 
     assert "com.example.b" not in {
         package for batch in controller.disabled for package in batch
@@ -367,6 +444,7 @@ def test_failed_batch_shows_remaining_disabled_and_an_undo_action(qtbot):
 
     page.apply_button.click()
     qtbot.waitUntil(lambda: page.error_label.isVisibleTo(page), timeout=3000)
+    qtbot.waitUntil(lambda: not page.busy, timeout=3000)
 
     assert page.next_page is None
     assert "com.example.a" in page.remaining_label.text()
@@ -384,6 +462,147 @@ def test_failed_batch_shows_remaining_disabled_and_an_undo_action(qtbot):
 # ---------------------------------------------------------------------------
 # DonePage
 # ---------------------------------------------------------------------------
+
+
+def test_apply_page_forwards_the_selected_ads_provider(qtbot):
+    selected = ("com.example.a", "com.example.b")
+    context = review_context(selected)
+    controller = FakeApplyController()
+    page = ApplyPage(context, controller=controller)
+    qtbot.addWidget(page)
+    page.show()
+
+    page.set_ads_provider("adguard")
+    page.apply_button.click()
+
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    assert controller.ads_providers == ["adguard"]
+
+
+def test_ads_flow_sets_dns_after_packages_and_done_shows_blocked(qtbot):
+    selected = ("com.example.a", "com.example.b")
+    context = review_context(selected)
+    cli = FakeAdsFlowCli(selected)
+    page = ApplyPage(context, controller=ApplyController(cli, backup=BACKUP))
+    qtbot.addWidget(page)
+    page.show()
+
+    page.set_ads_provider("adguard")
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    assert cli.disable_calls == [selected]
+    assert cli.dns_set_calls == ["adguard"]
+    assert cli.dns_check_calls == 1
+    assert cli.events.index("dns_set:adguard") > cli.events.index(
+        "disable:" + ",".join(selected)
+    )
+    assert cli.events.index("dns_check") > cli.events.index("dns_set:adguard")
+
+    summary = page.last_summary
+    assert summary is not None
+    assert summary.result.completed is True
+    assert summary.result.ads_provider == "adguard"
+    assert summary.result.ads_check["ad_blocked"] is True
+    assert summary.result.ads_error is None
+
+    done = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(done)
+    done.show_summary(summary)
+    done.show()
+
+    assert done.ads_label.isVisibleTo(done) is True
+    assert done.ads_label.text() == "Anuncios bloqueados"
+    assert "YouTube" in done.ads_caveat_label.text()
+    assert done.ads_caveat_label.isVisibleTo(done) is True
+
+
+def test_ads_set_failure_keeps_packages_and_done_shows_the_error(qtbot):
+    selected = ("com.example.a", "com.example.b")
+    context = review_context(selected)
+    cli = FakeAdsFlowCli(selected)
+    cli.dns_set_result = CliResult(
+        ("dns", "set", "adguard"), 1, "", "private dns failed"
+    )
+    page = ApplyPage(context, controller=ApplyController(cli, backup=BACKUP))
+    qtbot.addWidget(page)
+    page.show()
+
+    page.set_ads_provider("adguard")
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    assert cli.dns_set_calls == ["adguard"]
+    assert cli.dns_check_calls == 0
+    assert page.last_summary is not None
+    assert page.last_summary.result.completed is True
+    assert page.last_summary.result.ads_error == "set"
+
+    done = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(done)
+    done.show_summary(page.last_summary)
+    done.show()
+
+    assert done.count_label.text() == "2 apps desactivadas"
+    assert done.ads_label.isVisibleTo(done) is True
+    assert "No se pudo activar" in done.ads_label.text()
+
+
+def test_apply_without_ads_never_calls_dns(qtbot):
+    selected = ("com.example.a", "com.example.b")
+    context = review_context(selected)
+    cli = FakeAdsFlowCli(selected)
+    page = ApplyPage(context, controller=ApplyController(cli, backup=BACKUP))
+    qtbot.addWidget(page)
+    page.show()
+
+    page.apply_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "done", timeout=3000)
+
+    assert cli.dns_set_calls == []
+    assert cli.dns_check_calls == 0
+    assert page.last_summary is not None
+    assert page.last_summary.result.ads_provider is None
+
+
+def test_done_shows_an_offline_ads_check_as_not_verified(qtbot):
+    context = review_context()
+    page = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(page)
+    page.show_summary(
+        make_summary(
+            applied=("com.example.a",),
+            ads_provider="adguard",
+            ads_check={
+                "ad_domain": "doubleclick.net",
+                "ad_ip": "",
+                "ad_state": "unknown",
+                "ad_blocked": None,
+                "control_domain": "wikipedia.org",
+                "control_ip": "",
+                "control_state": "unknown",
+                "online": False,
+            },
+            ads_error="offline",
+        )
+    )
+    page.show()
+
+    assert page.ads_label.isVisibleTo(page) is True
+    assert "No se pudo comprobar" in page.ads_label.text()
+    assert page.ads_caveat_label.isVisibleTo(page) is True
+
+
+def test_done_hides_the_ads_status_when_ads_were_off(qtbot):
+    context = review_context()
+    page = DonePage(context, controller=FakeUndoController())
+    qtbot.addWidget(page)
+    page.show_summary(make_summary())
+    page.show()
+
+    assert page.ads_label.isHidden() is True
+    assert page.ads_caveat_label.isHidden() is True
 
 
 def test_done_shows_the_count_the_backup_path_and_undo(qtbot):
@@ -411,7 +630,10 @@ def test_undo_asks_for_confirmation_and_shows_the_dry_run_summary(qtbot):
     page.show()
 
     page.undo_button.click()
-    qtbot.waitUntil(lambda: page.confirm_panel.isVisibleTo(page), timeout=3000)
+    qtbot.waitUntil(
+        lambda: page.confirm_panel.isVisibleTo(page) and page.confirm_button.isEnabled(),
+        timeout=3000,
+    )
 
     assert controller.preview_calls == 1
     assert controller.undo_calls == 0
@@ -443,7 +665,10 @@ def test_undo_failure_offers_restore_from_backup_without_retrying(qtbot):
     page.show()
 
     page.undo_button.click()
-    qtbot.waitUntil(lambda: page.confirm_panel.isVisibleTo(page), timeout=3000)
+    qtbot.waitUntil(
+        lambda: page.confirm_panel.isVisibleTo(page) and page.confirm_button.isEnabled(),
+        timeout=3000,
+    )
     page.confirm_button.click()
     qtbot.waitUntil(lambda: page.fallback_panel.isVisibleTo(page), timeout=3000)
 
@@ -478,7 +703,10 @@ def test_successful_undo_clears_the_stale_remaining_state(qtbot):
     assert page.remaining_label.isVisibleTo(page) is True
 
     page.undo_button.click()
-    qtbot.waitUntil(lambda: page.confirm_panel.isVisibleTo(page), timeout=3000)
+    qtbot.waitUntil(
+        lambda: page.confirm_panel.isVisibleTo(page) and page.confirm_button.isEnabled(),
+        timeout=3000,
+    )
     page.confirm_button.click()
     qtbot.waitUntil(
         lambda: controller.undo_calls == 1 and not page.busy, timeout=3000
@@ -619,6 +847,7 @@ def test_preview_failure_keeps_the_failed_summary_and_scoped_copy(qtbot):
         lambda: window.apply_page.error_label.isVisibleTo(window.apply_page),
         timeout=3000,
     )
+    qtbot.waitUntil(lambda: not window.apply_page.busy, timeout=3000)
     window.apply_page.undo_button.click()
     qtbot.waitUntil(lambda: window.current_page_name == "done", timeout=3000)
 

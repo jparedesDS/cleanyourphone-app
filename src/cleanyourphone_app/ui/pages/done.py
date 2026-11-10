@@ -109,6 +109,18 @@ class DonePage(Page):
         self.status_label.setWordWrap(True)
         self.status_label.hide()
 
+        self.ads_label = QLabel(self)
+        self.ads_label.setObjectName("done_ads_label")
+        self.ads_label.setProperty("role", "success")
+        self.ads_label.setWordWrap(True)
+        self.ads_label.hide()
+
+        self.ads_caveat_label = QLabel(self)
+        self.ads_caveat_label.setObjectName("done_ads_caveat")
+        self.ads_caveat_label.setProperty("role", "muted")
+        self.ads_caveat_label.setWordWrap(True)
+        self.ads_caveat_label.hide()
+
         self.summary_warning_label = QLabel(self)
         self.summary_warning_label.setObjectName("done_summary_warning")
         self.summary_warning_label.setProperty("role", "error")
@@ -234,6 +246,8 @@ class DonePage(Page):
         layout.addWidget(self.body_label)
         layout.addWidget(self.count_label)
         layout.addWidget(self.status_label)
+        layout.addWidget(self.ads_label)
+        layout.addWidget(self.ads_caveat_label)
         layout.addWidget(self.summary_warning_label)
         layout.addWidget(self.error_label)
         layout.addWidget(self.remaining_caption)
@@ -278,6 +292,7 @@ class DonePage(Page):
             and bool(result.verify.get("checks"))
         )
         self._render_backup()
+        self._render_ads(result)
 
         if self._undo_done:
             # The present-tense summary no longer describes the phone: undo
@@ -291,6 +306,7 @@ class DonePage(Page):
             self.error_label.hide()
             self.remaining_caption.hide()
             self.remaining_label.hide()
+            self._hide_ads()
             return
 
         failed = result.failed_batch is not None
@@ -351,6 +367,58 @@ class DonePage(Page):
         self.backup_caption.show()
         self.backup_label.setText(str(path))
         self.backup_label.show()
+
+    def _render_ads(self, result: ApplyResult) -> None:
+        """Show the optional DNS outcome without ever hiding a package result."""
+        if not result.ads_provider:
+            self._hide_ads()
+            return
+
+        self.ads_caveat_label.setText(self.tr("ads.caveat"))
+        self.ads_caveat_label.show()
+
+        error = result.ads_error
+        if error == "set":
+            text = self.tr("done.ads_set_failed")
+            role = "error"
+        elif error == "check":
+            text = self.tr("done.ads_check_failed")
+            role = "muted"
+        elif error == "offline":
+            text = self.tr("done.ads_offline")
+            role = "muted"
+        elif error == "unconfirmed":
+            text = self.tr("done.ads_unconfirmed")
+            role = "muted"
+        elif isinstance(result.ads_check, dict) and (
+            result.ads_check.get("online") is False
+        ):
+            text = self.tr("done.ads_offline")
+            role = "muted"
+        elif isinstance(result.ads_check, dict) and (
+            result.ads_check.get("ad_blocked") is True
+        ):
+            text = self.tr("done.ads_blocked")
+            role = "success"
+        else:
+            text = self.tr("done.ads_unconfirmed")
+            role = "muted"
+
+        self.ads_label.setText(text)
+        self._set_ads_role(role)
+        self.ads_label.show()
+
+    def _set_ads_role(self, role: str) -> None:
+        if self.ads_label.property("role") == role:
+            return
+        self.ads_label.setProperty("role", role)
+        self.ads_label.style().unpolish(self.ads_label)
+        self.ads_label.style().polish(self.ads_label)
+        self.ads_label.update()
+
+    def _hide_ads(self) -> None:
+        self.ads_label.hide()
+        self.ads_caveat_label.hide()
 
     # ------------------------------------------------------------------- undo
 
@@ -522,6 +590,7 @@ class DonePage(Page):
         self.remaining_label.hide()
         self.status_label.hide()
         self.summary_warning_label.hide()
+        self._hide_ads()
         self.verified_label.hide()
         self.backup_caption.hide()
         self.backup_label.clear()
@@ -551,6 +620,8 @@ class DonePage(Page):
         self.title_label.setAccessibleName(self.title_label.text())
         self.body_label.setAccessibleName(self.body_label.text())
         self.count_label.setAccessibleName(self.count_label.text())
+        self.ads_label.setAccessibleName(self.ads_label.text())
+        self.ads_caveat_label.setAccessibleName(self.ads_caveat_label.text())
         self.undo_button.setAccessibleName(self.undo_button.text())
         self.confirm_button.setAccessibleName(self.confirm_button.text())
         self.cancel_button.setAccessibleName(self.cancel_button.text())

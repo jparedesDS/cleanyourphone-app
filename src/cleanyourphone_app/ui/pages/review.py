@@ -13,8 +13,10 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -48,8 +50,38 @@ def _clear_layout(layout: QLayout) -> None:
             widget.deleteLater()
 
 
+# The CLI returns stable preset keys. These labels are proper names, so they
+# stay readable instead of showing the raw alias when a description is absent.
+_ADS_LABELS: dict[str, str] = {
+    "adguard": "AdGuard",
+    "adguard-family": "AdGuard Family",
+    "controld": "Control D",
+    "mullvad": "Mullvad",
+}
+_FALLBACK_ADS_PROVIDERS: dict[str, dict[str, str]] = {
+    "adguard": {
+        "host": "dns.adguard-dns.com",
+        "description": "AdGuard DNS: ads and trackers",
+    }
+}
+
+
+def _ads_label(provider: str, preset: object) -> str:
+    label = _ADS_LABELS.get(provider)
+    if label is not None:
+        return label
+    description = ""
+    if isinstance(preset, dict):
+        description = str(preset.get("description") or "").strip()
+    if description:
+        return description.split(":", 1)[0].strip() or provider
+    return provider.replace("-", " ").title()
+
+
 class ReviewPage(Page):
     """The checked selection and the exact package details behind it."""
+
+    ads_selected = Signal(object)
 
     def __init__(
         self,
@@ -65,6 +97,7 @@ class ReviewPage(Page):
         self._has_run = False
         self._mode = "load"
         self._error_key: str | None = None
+        self._providers_requested = False
         self.model: ReviewModel | None = None
         self.row_widgets: dict[str, PackageRow] = {}
         self.tested_rows: list[PackageRow] = []
@@ -77,6 +110,9 @@ class ReviewPage(Page):
         self._call.succeeded.connect(self._plan_succeeded)
         self._call.failed.connect(self._plan_failed)
         self._call.finished.connect(self._plan_finished)
+        self._providers_call = BackgroundCall(self)
+        self._providers_call.succeeded.connect(self._providers_succeeded)
+        self._providers_call.failed.connect(self._providers_failed)
         self._build_ui()
         self.retranslate()
 
@@ -108,6 +144,18 @@ class ReviewPage(Page):
 
     def selected_packages(self) -> tuple[str, ...]:
         return self.model.selected_packages() if self.model is not None else ()
+
+    @property
+    def ads_provider(self) -> str | None:
+        """The chosen private DNS preset, or ``None`` when ads are off."""
+        if not self.ads_checkbox.isChecked():
+            return None
+        provider = self.ads_combo.currentData()
+        if isinstance(provider, str) and provider:
+            return provider
+        # The card must never be checked without a provider: AdGuard is the
+        # documented default and stays selectable if the presets are late.
+        return "adguard"
 
     # ------------------------------------------------------------------ build
 
@@ -194,10 +242,46 @@ class ReviewPage(Page):
         self.blocked_rows_layout.setSpacing(8)
         self.blocked_container.hide()
 
+        self.ads_card = QFrame(content)
+        self.ads_card.setObjectName("ReviewAdsCard")
+        ads_layout = QVBoxLayout(self.ads_card)
+        ads_layout.setContentsMargins(16, 14, 16, 14)
+        ads_layout.setSpacing(8)
+        self.ads_checkbox = QCheckBox(self.ads_card)
+        self.ads_checkbox.setObjectName("review_ads_checkbox")
+        self.ads_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ads_checkbox.setChecked(False)
+        self.ads_checkbox.toggled.connect(self._set_ads_enabled)
+        self.ads_body = QLabel(self.ads_card)
+        self.ads_body.setProperty("role", "body")
+        self.ads_body.setWordWrap(True)
+        self.ads_provider_caption = QLabel(self.ads_card)
+        self.ads_provider_caption.setProperty("role", "muted")
+        self.ads_combo = QComboBox(self.ads_card)
+        self.ads_combo.setObjectName("review_ads_combo")
+        self.ads_combo.setEnabled(False)
+        self.ads_caveat_label = QLabel(self.ads_card)
+        self.ads_caveat_label.setObjectName("review_ads_caveat")
+        self.ads_caveat_label.setProperty("role", "muted")
+        self.ads_caveat_label.setWordWrap(True)
+
+        ads_provider_row = QHBoxLayout()
+        ads_provider_row.setContentsMargins(0, 0, 0, 0)
+        ads_provider_row.setSpacing(10)
+        ads_provider_row.addWidget(self.ads_provider_caption)
+        ads_provider_row.addWidget(self.ads_combo, 1)
+        ads_provider_row.addStretch(1)
+
+        ads_layout.addWidget(self.ads_checkbox)
+        ads_layout.addWidget(self.ads_body)
+        ads_layout.addLayout(ads_provider_row)
+        ads_layout.addWidget(self.ads_caveat_label)
+
         content_layout.addWidget(self.tested_section)
         content_layout.addWidget(self.ask_section)
         self.tested_section.hide()
         self.ask_section.hide()
+        content_layout.addWidget(self.ads_card)
         self.blocked_header.hide()
         content_layout.addWidget(self.blocked_header)
         content_layout.addWidget(self.blocked_container)
@@ -263,6 +347,7 @@ class ReviewPage(Page):
         """Load the plan from the CLI on the worker thread."""
         if self._busy or self._call.active:
             return
+        self._ensure_providers()
         profile_id = self.context.session.profile_id
         if not isinstance(profile_id, str) or not profile_id.strip():
             self._has_run = True
@@ -283,12 +368,15 @@ class ReviewPage(Page):
 
     def shutdown(self) -> None:
         self._call.shutdown(5000)
+        self._providers_call.shutdown(5000)
 
     def reset(self) -> None:
         self._call.shutdown(5000)
+        self._providers_call.shutdown(5000)
         self._busy = False
         self._has_run = False
         self._mode = "load"
+        self._providers_requested = False
         self.model = None
         self.next_page = None
         self._clear_rows()
@@ -301,6 +389,11 @@ class ReviewPage(Page):
         self.blocked_header.hide()
         self.blocked_container.hide()
         self.blocked_button.setChecked(False)
+        self.ads_checkbox.setChecked(False)
+        self.ads_combo.setEnabled(False)
+        index = self.ads_combo.findData("adguard")
+        if index >= 0:
+            self.ads_combo.setCurrentIndex(index)
         self.backup_caption.hide()
         self.backup_label.clear()
         self.backup_label.hide()
@@ -329,6 +422,64 @@ class ReviewPage(Page):
         self.blocked_button.setText(
             self.tr("review.hide_blocked" if visible else "review.show_blocked")
         )
+
+    # ----------------------------------------------------------------- ads
+
+    def _ensure_providers(self) -> None:
+        """Load the DNS presets once, without blocking the UI thread."""
+        if self._providers_requested:
+            return
+        self._providers_requested = True
+        loader = getattr(self._cli, "dns_providers", None)
+        if not callable(loader):
+            self._set_providers(None)
+            return
+        if not self._providers_call.start(loader):
+            self._providers_requested = False
+            self._set_providers(None)
+
+    def _providers_succeeded(self, payload: object) -> None:
+        self._set_providers(payload if isinstance(payload, dict) else None)
+
+    def _providers_failed(self, error: object) -> None:
+        logging.getLogger(LOGGER_NAME).warning(
+            "dns providers failed: %s", type(error).__name__
+        )
+        self._set_providers(None)
+
+    def _set_providers(self, payload: dict | None) -> None:
+        providers = payload if isinstance(payload, dict) and payload else None
+        if providers is None:
+            providers = _FALLBACK_ADS_PROVIDERS
+        current = self.ads_combo.currentData()
+        self.ads_combo.blockSignals(True)
+        self.ads_combo.clear()
+        # AdGuard is the documented default, so it stays first even if the
+        # sidecar returns its presets in a different order.
+        for provider in sorted(providers, key=lambda name: (name != "adguard", name)):
+            preset = providers[provider]
+            self.ads_combo.addItem(_ads_label(provider, preset), provider)
+            description = (
+                preset.get("description") if isinstance(preset, dict) else None
+            )
+            if isinstance(description, str) and description.strip():
+                self.ads_combo.setItemData(
+                    self.ads_combo.count() - 1,
+                    description,
+                    Qt.ItemDataRole.ToolTipRole,
+                )
+        target = current if isinstance(current, str) and current else "adguard"
+        index = self.ads_combo.findData(target)
+        if index < 0:
+            index = self.ads_combo.findData("adguard")
+        if index < 0:
+            index = 0
+        self.ads_combo.setCurrentIndex(index)
+        self.ads_combo.blockSignals(False)
+        self.ads_combo.setEnabled(self.ads_checkbox.isChecked())
+
+    def _set_ads_enabled(self, enabled: bool) -> None:
+        self.ads_combo.setEnabled(enabled)
 
     # --------------------------------------------------------------- workers
 
@@ -385,6 +536,7 @@ class ReviewPage(Page):
             self._show_error("review.plan_changed", retry=False)
             self._update_selection_state()
             return
+        self.ads_selected.emit(self.ads_provider)
         # ApplyPage owns the REVIEW -> APPLYING transition when the user
         # clicks Apply; Review must not start the write flow by itself.
         self._go("apply")
@@ -523,6 +675,10 @@ class ReviewPage(Page):
         self.tested_heading.setText(self.tr("review.tested"))
         self.ask_heading.setText(self.tr("review.ask"))
         self.ask_note.setText(self.tr("review.ask_note"))
+        self.ads_checkbox.setText(self.tr("ads.block"))
+        self.ads_body.setText(self.tr("ads.body"))
+        self.ads_provider_caption.setText(self.tr("ads.provider"))
+        self.ads_caveat_label.setText(self.tr("ads.caveat"))
         self.empty_label.setText(self.tr("review.empty_selection"))
         self.retry_button.setText(self.tr("review.retry"))
         self.backup_caption.setText(self.tr("backup.path"))
@@ -548,6 +704,13 @@ class ReviewPage(Page):
         self.body_label.setAccessibleName(self.body_label.text())
         self.busy_label.setAccessibleName(self.busy_label.text())
         self.ask_note.setAccessibleName(self.ask_note.text())
+        self.ads_checkbox.setAccessibleName(self.ads_checkbox.text())
+        self.ads_body.setAccessibleName(self.ads_body.text())
+        self.ads_provider_caption.setAccessibleName(
+            self.ads_provider_caption.text()
+        )
+        self.ads_combo.setAccessibleName(self.ads_provider_caption.text())
+        self.ads_caveat_label.setAccessibleName(self.ads_caveat_label.text())
         self.empty_label.setAccessibleName(self.empty_label.text())
         self.retry_button.setAccessibleName(self.retry_button.text())
         self.blocked_button.setAccessibleName(self.blocked_button.text())

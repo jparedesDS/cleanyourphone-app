@@ -140,6 +140,37 @@ class FakePlanCli:
         return result
 
 
+ADS_PROVIDERS = {
+    "adguard": {
+        "host": "dns.adguard-dns.com",
+        "description": "AdGuard DNS: ads and trackers",
+    },
+    "controld": {
+        "host": "p2.freedns.controld.com",
+        "description": "Control D free: ads and trackers",
+    },
+}
+
+
+class FakeAdsPlanCli(FakePlanCli):
+    def __init__(
+        self,
+        *plans: PlanData | Exception,
+        providers: dict[str, dict[str, str]] | None = None,
+        provider_error: Exception | None = None,
+    ):
+        super().__init__(*plans)
+        self.providers = providers if providers is not None else ADS_PROVIDERS
+        self.provider_error = provider_error
+        self.provider_calls = 0
+
+    def dns_providers(self) -> dict[str, dict[str, str]]:
+        self.provider_calls += 1
+        if self.provider_error is not None:
+            raise self.provider_error
+        return {name: dict(item) for name, item in self.providers.items()}
+
+
 def wait_for_review_page(qtbot, page: ReviewPage) -> None:
     qtbot.waitUntil(
         lambda: not page.busy and (page.model is not None or page.error_label.isVisibleTo(page)),
@@ -592,6 +623,60 @@ def test_spanish_review_copy_uses_desactivar_and_dejar_como_esta(qtbot):
     assert "quitar" not in page.row_widgets["com.example.ask"].status_label.text().lower()
 
 
+def test_review_shows_an_optional_unchecked_ads_card(qtbot):
+    cli = FakeAdsPlanCli(default_plan())
+    page = ReviewPage(review_context(Translator("es")), cli)
+    qtbot.addWidget(page)
+    page.show()
+    wait_for_review_page(qtbot, page)
+    qtbot.waitUntil(lambda: page.ads_combo.count() == 2, timeout=3000)
+
+    assert cli.provider_calls == 1
+    assert page.ads_checkbox.text() == "Bloquear anuncios"
+    assert page.ads_checkbox.isChecked() is False
+    assert page.ads_provider is None
+    assert page.ads_combo.isEnabled() is False
+    assert page.ads_combo.currentData() == "adguard"
+    assert page.ads_combo.currentText() == "AdGuard"
+    assert "YouTube" in page.ads_caveat_label.text()
+    assert page.ads_caveat_label.isVisibleTo(page) is True
+
+
+def test_checking_ads_selects_adguard_for_the_apply_step(qtbot):
+    cli = FakeAdsPlanCli(default_plan())
+    page = ReviewPage(review_context(Translator("es")), cli)
+    qtbot.addWidget(page)
+    page.show()
+    wait_for_review_page(qtbot, page)
+    qtbot.waitUntil(lambda: page.ads_combo.count() == 2, timeout=3000)
+
+    emitted: list[str | None] = []
+    page.ads_selected.connect(emitted.append)
+    page.ads_checkbox.setChecked(True)
+
+    assert page.ads_combo.isEnabled() is True
+    assert page.ads_provider == "adguard"
+
+    page.continue_button.click()
+    qtbot.waitUntil(lambda: page.next_page == "apply", timeout=3000)
+
+    assert emitted == ["adguard"]
+    assert page.ads_provider == "adguard"
+
+
+def test_review_ads_card_falls_back_to_adguard_when_providers_fail(qtbot):
+    cli = FakeAdsPlanCli(default_plan(), provider_error=CliError("offline"))
+    page = ReviewPage(review_context(Translator("es")), cli)
+    qtbot.addWidget(page)
+    page.show()
+    wait_for_review_page(qtbot, page)
+    qtbot.waitUntil(lambda: page.ads_combo.count() == 1, timeout=3000)
+
+    assert page.ads_combo.currentData() == "adguard"
+    assert page.ads_checkbox.isChecked() is False
+    assert page.ads_provider is None
+
+
 # ---------------------------------------------------------------------------
 # Shell wiring
 # ---------------------------------------------------------------------------
@@ -773,3 +858,33 @@ def test_backup_then_review_runs_through_the_real_shell(qtbot, tmp_path, monkeyp
     assert len(cli.written) == 1
     assert context.session.backup_path == cli.written[0]
     assert window.review_page.model.selected_packages() == ("com.example.disable",)
+
+
+def test_shell_passes_the_review_ads_provider_to_apply(qtbot):
+    cli = FakeAdsPlanCli(default_plan())
+    context = AppContext.fake(
+        translator=Translator("es"),
+        cli=cli,
+        adb_info=make_info(),
+        device_lister=lambda _info: [],
+    )
+    window = MainWindow(context)
+    qtbot.addWidget(window)
+    window.show()
+    window.start_flow()
+
+    context.session.attach(SERIAL, Transport.USB)
+    context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.checked(probe(), "pixel-8")
+    context.session.backup_done(Path("C:/backup/20260101_120000"))
+    window.show_page("review")
+
+    qtbot.waitUntil(lambda: window.review_page.model is not None, timeout=3000)
+    qtbot.waitUntil(lambda: window.review_page.ads_combo.count() == 2, timeout=3000)
+
+    window.review_page.ads_checkbox.setChecked(True)
+    window.review_page.continue_button.click()
+
+    qtbot.waitUntil(lambda: window.current_page_name == "apply", timeout=3000)
+
+    assert window.apply_page.ads_provider == "adguard"

@@ -67,6 +67,21 @@ class FakeApplyCli:
             "Restore from backup complete.",
             "",
         )
+        self.dns_set_calls: list[str] = []
+        self.dns_set_result = CliResult(("dns", "set", "adguard"), 0, "", "")
+        self.dns_set_error: Exception | None = None
+        self.dns_check_calls = 0
+        self.dns_check_result = {
+            "ad_domain": "doubleclick.net",
+            "ad_ip": "0.0.0.0",
+            "ad_state": "blocked",
+            "ad_blocked": True,
+            "control_domain": "wikipedia.org",
+            "control_ip": "203.0.113.7",
+            "control_state": "ok",
+            "online": True,
+        }
+        self.dns_check_error: Exception | None = None
 
     def plan(self, profile_id: str) -> PlanData:
         self.plan_calls.append(profile_id)
@@ -115,6 +130,20 @@ class FakeApplyCli:
         self.restore_from_backup_calls.append((Path(backup), yes))
         self.calls.append(self.restore_from_backup_result)
         return self.restore_from_backup_result
+
+    def dns_set(self, provider: str) -> CliResult:
+        self.dns_set_calls.append(provider)
+        self.calls.append(self.dns_set_result)
+        if self.dns_set_error is not None:
+            raise self.dns_set_error
+        return self.dns_set_result
+
+    def dns_check(self) -> dict:
+        self.dns_check_calls += 1
+        self.calls.append(CliResult(("--json", "dns", "check"), 0, "", ""))
+        if self.dns_check_error is not None:
+            raise self.dns_check_error
+        return dict(self.dns_check_result)
 
 
 def test_success_runs_plan_before_each_batch_and_verifies_once_per_batch():
@@ -339,6 +368,149 @@ def test_run_rejects_an_empty_selection_or_profile():
         controller.run((), "pixel-8")
     with pytest.raises(ValueError):
         controller.run(("a",), "")
+
+    assert cli.calls == []
+
+
+def test_ads_are_off_by_default_and_make_no_dns_calls():
+    cli = FakeApplyCli()
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8")
+
+    assert result.completed is True
+    assert result.ads_provider is None
+    assert result.ads_check is None
+    assert result.ads_error is None
+    assert cli.dns_set_calls == []
+    assert cli.dns_check_calls == 0
+
+
+def test_ads_provider_sets_dns_after_the_last_package_batch():
+    cli = FakeApplyCli()
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8", ads_provider="adguard")
+
+    assert result.completed is True
+    assert cli.disable_calls == [("a", "b")]
+    assert cli.dns_set_calls == ["adguard"]
+    assert cli.dns_check_calls == 1
+    assert result.ads_provider == "adguard"
+    assert result.ads_check["ad_blocked"] is True
+    assert result.ads_error is None
+
+    disable_index = max(
+        index
+        for index, call in enumerate(cli.calls)
+        if call.args and call.args[0] == "disable"
+    )
+    dns_set_index = next(
+        index
+        for index, call in enumerate(cli.calls)
+        if call.args[:2] == ("dns", "set")
+    )
+    assert disable_index < dns_set_index
+    assert cli.calls[-2].args == ("dns", "set", "adguard")
+    assert cli.calls[-1].args == ("--json", "dns", "check")
+
+
+def test_dns_set_failure_keeps_the_package_success_and_reports_ads_error():
+    cli = FakeApplyCli()
+    cli.dns_set_result = CliResult(("dns", "set", "adguard"), 1, "", "no dns")
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8", ads_provider="adguard")
+
+    assert result.completed is True
+    assert result.failed_batch is None
+    assert result.remaining_disabled == ()
+    assert result.ads_provider == "adguard"
+    assert result.ads_check is None
+    assert result.ads_error == "set"
+    assert cli.disable_calls == [("a", "b")]
+    assert cli.dns_check_calls == 0
+    assert all(
+        not call.args or call.args[0] != "restore" for call in cli.calls
+    )
+
+
+def test_dns_set_exception_keeps_the_package_success():
+    cli = FakeApplyCli()
+    cli.dns_set_error = RuntimeError("dns crashed")
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8", ads_provider="adguard")
+
+    assert result.completed is True
+    assert result.ads_error == "set"
+    assert cli.disable_calls == [("a", "b")]
+    assert cli.dns_check_calls == 0
+
+
+def test_dns_check_offline_is_reported_with_the_payload():
+    cli = FakeApplyCli()
+    cli.dns_check_result = {
+        "ad_domain": "doubleclick.net",
+        "ad_ip": "",
+        "ad_state": "unknown",
+        "ad_blocked": None,
+        "control_domain": "wikipedia.org",
+        "control_ip": "",
+        "control_state": "unknown",
+        "online": False,
+    }
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8", ads_provider="adguard")
+
+    assert result.completed is True
+    assert result.ads_error == "offline"
+    assert result.ads_check["online"] is False
+    assert cli.dns_check_calls == 1
+
+
+def test_dns_check_without_confirmed_blocking_is_not_reported_as_success():
+    cli = FakeApplyCli()
+    cli.dns_check_result = {
+        "ad_domain": "doubleclick.net",
+        "ad_ip": "142.250.184.14",
+        "ad_state": "ok",
+        "ad_blocked": False,
+        "control_domain": "wikipedia.org",
+        "control_ip": "203.0.113.7",
+        "control_state": "ok",
+        "online": True,
+    }
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8", ads_provider="adguard")
+
+    assert result.completed is True
+    assert result.ads_error == "unconfirmed"
+    assert result.ads_check["ad_blocked"] is False
+
+
+def test_a_failed_batch_never_starts_the_ads_step():
+    cli = FakeApplyCli()
+    cli.disable_results = [1]
+    controller = ApplyController(cli, backup=BACKUP)
+
+    result = controller.run(("a", "b"), "pixel-8", ads_provider="adguard")
+
+    assert result.completed is False
+    assert result.ads_provider is None
+    assert result.ads_error is None
+    assert cli.dns_set_calls == []
+    assert cli.dns_check_calls == 0
+
+
+def test_run_rejects_an_invalid_ads_provider_before_any_write():
+    cli = FakeApplyCli()
+    controller = ApplyController(cli, backup=BACKUP)
+
+    with pytest.raises(ValueError):
+        controller.run(("a",), "pixel-8", ads_provider="   ")
 
     assert cli.calls == []
 

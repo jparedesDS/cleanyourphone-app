@@ -4,7 +4,9 @@ The CLI owns every write. This controller only sequences the calls: it re-runs
 the plan before each batch so a package that stopped being actionable is never
 sent to ``disable``, verifies the phone after every successful batch, and on a
 failure reports the packages that are still disabled instead of claiming the
-phone is unchanged. Undo always previews with ``restore --dry-run`` first and
+phone is unchanged. After every package batch succeeds it can optionally set a
+private DNS preset; a DNS failure is reported on its own and never undoes a
+disabled package. Undo always previews with ``restore --dry-run`` first and
 never retries a failed restore on its own.
 """
 
@@ -31,6 +33,9 @@ class ApplyResult:
     rollback_verified: bool = False
     verify: dict = field(default_factory=dict)
     fallback_backup: Path | None = None
+    ads_provider: str | None = None
+    ads_check: dict | None = None
+    ads_error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +85,15 @@ def _selection(selected: Iterable[str]) -> tuple[str, ...]:
     if not packages:
         raise ValueError("selection must contain at least one package")
     return tuple(packages)
+
+
+def _ads_provider(provider: str | None) -> str | None:
+    """Validate the optional ads provider before any package is written."""
+    if provider is None:
+        return None
+    if not isinstance(provider, str) or not provider.strip():
+        raise ValueError("ads provider must be a non-empty string or None")
+    return provider.strip()
 
 
 def _action(row: object) -> str:
@@ -133,11 +147,19 @@ class ApplyController:
         profile_id: str,
         on_progress: Callable[[ApplyProgress], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
+        ads_provider: str | None = None,
     ) -> ApplyResult:
-        """Disable *selected* in batches, re-planning and verifying each one."""
+        """Disable *selected* in batches, re-planning and verifying each one.
+
+        ``ads_provider`` is optional. When set, the private DNS is configured
+        only after every package batch has succeeded. A DNS failure never
+        rolls back a disabled package: the result keeps ``completed=True`` and
+        records ``ads_error`` instead.
+        """
         packages = _selection(selected)
         if not isinstance(profile_id, str) or not profile_id.strip():
             raise ValueError("profile_id must be a non-empty string")
+        requested_ads = _ads_provider(ads_provider)
 
         batches = split_batches(packages, self._batch_size)
         total = len(batches)
@@ -233,12 +255,17 @@ class ApplyController:
         if not last_verify:
             last_verify = self._safe_verify()
 
+        ads_provider, ads_check, ads_error = self._configure_ads(requested_ads)
+
         return ApplyResult(
             completed=True,
             failed_batch=None,
             remaining_disabled=(),
             rollback_verified=False,
             verify=last_verify,
+            ads_provider=ads_provider,
+            ads_check=ads_check,
+            ads_error=ads_error,
         )
 
     # ------------------------------------------------------------------- undo
@@ -285,6 +312,43 @@ class ApplyController:
         return UndoResult(restored=True, used_backup=True)
 
     # ---------------------------------------------------------------- helpers
+
+    def _configure_ads(
+        self, provider: str | None
+    ) -> tuple[str | None, dict | None, str | None]:
+        """Set the private DNS and confirm it without touching the packages.
+
+        The packages have already been disabled and verified at this point.
+        Every failure is reported as an ads outcome only; it never turns a
+        package success into a failed apply and never triggers a restore.
+        """
+        if provider is None:
+            return None, None, None
+
+        try:
+            configured = self._cli.dns_set(provider)
+        except Exception as error:  # noqa: BLE001 - packages stay disabled
+            logging.getLogger(LOGGER_NAME).warning(
+                "ads dns set failed: %s", type(error).__name__
+            )
+            return provider, None, "set"
+        if not _result_ok(configured):
+            return provider, None, "set"
+
+        try:
+            check = self._cli.dns_check()
+        except Exception as error:  # noqa: BLE001 - ads are not package state
+            logging.getLogger(LOGGER_NAME).warning(
+                "ads dns check failed: %s", type(error).__name__
+            )
+            return provider, None, "check"
+        if not isinstance(check, dict):
+            return provider, None, "check"
+        if check.get("online") is False:
+            return provider, check, "offline"
+        if check.get("ad_blocked") is not True:
+            return provider, check, "unconfirmed"
+        return provider, check, None
 
     def _verify(self) -> dict:
         payload = self._cli.verify()

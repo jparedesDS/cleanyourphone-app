@@ -64,6 +64,7 @@ class ApplyPage(Page):
         self._selected: tuple[str, ...] = ()
         self._applied: tuple[str, ...] = ()
         self._result: ApplyResult | None = None
+        self._ads_provider: str | None = None
         self._batch_index = 1
         self._total_batches = 0
         self._status_key: str | None = None
@@ -96,6 +97,19 @@ class ApplyPage(Page):
     @property
     def applied_packages(self) -> tuple[str, ...]:
         return self._applied
+
+    @property
+    def ads_provider(self) -> str | None:
+        return self._ads_provider
+
+    def set_ads_provider(self, provider: str | None) -> None:
+        """Record the optional DNS preset chosen on Review."""
+        if provider is None:
+            self._ads_provider = None
+            return
+        if not isinstance(provider, str) or not provider.strip():
+            raise ValueError("ads provider must be a non-empty string or None")
+        self._ads_provider = provider.strip()
 
     # ------------------------------------------------------------------ build
 
@@ -252,12 +266,15 @@ class ApplyPage(Page):
             controller = ApplyController(self._cli, backup=session.backup_path)
             self._controller = controller
 
+        ads_provider = self._ads_provider
+
         def call() -> ApplyResult:
             return controller.run(
                 self._selected,
                 profile_id,
                 on_progress=self.progress_ready.emit,
                 should_stop=lambda: self._stop_requested,
+                ads_provider=ads_provider,
             )
 
         if not self._call.start(call):
@@ -494,6 +511,7 @@ class ApplyPage(Page):
         self._selected = ()
         self._applied = ()
         self._result = None
+        self._ads_provider = None
         self._controller = None
         self.last_summary = None
         self._batch_index = 1

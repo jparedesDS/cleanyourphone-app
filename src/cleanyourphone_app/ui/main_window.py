@@ -273,6 +273,7 @@ class MainWindow(QMainWindow):
 
         self.apply_page = ApplyPage(self.context)
         self.apply_page.completed.connect(self._present_done)
+        self.review_page.ads_selected.connect(self.apply_page.set_ads_provider)
         self.register_page("apply", self.apply_page)
 
         self.done_page = DonePage(self.context)
