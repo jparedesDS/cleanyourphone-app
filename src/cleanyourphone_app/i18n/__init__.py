@@ -1,6 +1,6 @@
 """Bundled English and Spanish UI copy."""
 
-from .packages import PackageCatalog
+from .packages import PackageCatalog, default_package_catalog
 from .translator import (
     DEFAULT_LANGUAGE,
     SUPPORTED_LANGUAGES,
@@ -13,5 +13,6 @@ __all__ = [
     "SUPPORTED_LANGUAGES",
     "PackageCatalog",
     "Translator",
+    "default_package_catalog",
     "normalize_language",
 ]

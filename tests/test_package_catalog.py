@@ -11,8 +11,12 @@ from pathlib import Path
 import pytest
 
 from cleanyourphone_app.domain.models import PlanRow
-from cleanyourphone_app.i18n.packages import PackageCatalog
+from cleanyourphone_app.i18n.packages import (
+    PackageCatalog,
+    default_package_catalog,
+)
 from cleanyourphone_app.i18n.translator import Translator
+from cleanyourphone_app.ui.app import AppContext
 from cleanyourphone_app.ui.widgets.package_row import PackageRow
 
 APP_ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +117,16 @@ def test_every_catalog_entry_has_spanish_why_and_breaks(catalog):
             text, translated = catalog.lookup(package_id, field, "")
             assert translated is True, package_id
             assert text.strip(), f"{package_id}.{field}"
+
+
+def test_default_catalog_is_loaded_once_and_wired_into_the_app_context():
+    first = default_package_catalog()
+    second = default_package_catalog()
+    context = AppContext.fake()
+
+    assert first is second
+    assert context.package_catalog is first
+    assert len(context.package_catalog) == 98
 
 
 @pytest.mark.skipif(

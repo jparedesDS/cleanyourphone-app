@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from cleanyourphone_app.domain.models import PlanData, PlanRow
 from cleanyourphone_app.domain.review import ReviewModel, plan_allows_review
 from cleanyourphone_app.domain.session import SessionError
+from cleanyourphone_app.i18n.packages import PackageCatalog
 from cleanyourphone_app.services.logging import LOGGER_NAME
 from cleanyourphone_app.ui.pages.base import Page
 from cleanyourphone_app.ui.widgets.package_row import PackageRow
@@ -54,7 +55,7 @@ class ReviewPage(Page):
         self,
         context: AppContext,
         cli: CliClient | None = None,
-        catalog: object | None = None,
+        catalog: PackageCatalog | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(context, parent)
@@ -86,6 +87,10 @@ class ReviewPage(Page):
     @property
     def review_model(self) -> ReviewModel | None:
         return self.model
+
+    @property
+    def catalog(self) -> PackageCatalog | None:
+        return self._catalog
 
     @property
     def selected_count(self) -> int:

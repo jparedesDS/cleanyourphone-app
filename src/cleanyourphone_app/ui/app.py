@@ -13,6 +13,7 @@ from PySide6.QtCore import QLocale
 from PySide6.QtWidgets import QApplication
 
 from cleanyourphone_app.domain.session import SessionController
+from cleanyourphone_app.i18n.packages import PackageCatalog, default_package_catalog
 from cleanyourphone_app.i18n.translator import Translator
 from cleanyourphone_app.services.adb import (
     AdbInfo,
@@ -41,6 +42,7 @@ class AppContext:
     """The long-lived services every page receives from the shell."""
 
     translator: Translator
+    package_catalog: PackageCatalog
     session: SessionController
     cli: CliClient
     adb_locator: AdbLocator
@@ -102,6 +104,7 @@ class AppContext:
         """Build deterministic services for UI tests; no process or network."""
         defaults: dict[str, Any] = {
             "translator": Translator("en"),
+            "package_catalog": default_package_catalog(),
             "session": SessionController(),
             "cli": CliClient(("cleanyourphone",)),
             "adb_locator": AdbLocator(version_runner=lambda _path: None),
@@ -130,6 +133,7 @@ def create_context(settings: Settings | None = None) -> AppContext:
 
     return AppContext(
         translator=Translator(language),
+        package_catalog=default_package_catalog(),
         session=SessionController(),
         cli=CliClient(("cleanyourphone",), env=env),
         adb_locator=AdbLocator(),

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
 
@@ -70,8 +71,8 @@ class PackageCatalog:
 
     @classmethod
     def default(cls) -> PackageCatalog:
-        """Load the bundled Spanish catalog."""
-        return cls.from_file(DEFAULT_CATALOG_PATH)
+        """Load the bundled Spanish catalog, cached once per process."""
+        return default_package_catalog()
 
     def package_ids(self) -> tuple[str, ...]:
         """Return every package id in stable sorted order."""
@@ -97,8 +98,15 @@ class PackageCatalog:
         return isinstance(package_id, str) and package_id in self._entries
 
 
+@lru_cache(maxsize=1)
+def default_package_catalog() -> PackageCatalog:
+    """Return the bundled catalog, loaded at most once per process."""
+    return PackageCatalog.from_file(DEFAULT_CATALOG_PATH)
+
+
 __all__ = [
     "DEFAULT_CATALOG_PATH",
     "PACKAGE_FIELDS",
     "PackageCatalog",
+    "default_package_catalog",
 ]

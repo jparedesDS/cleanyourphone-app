@@ -621,6 +621,46 @@ def test_main_window_registers_real_backup_and_review_pages(qtbot):
     assert window.current_page_name == "welcome"
 
 
+def test_shell_gives_review_the_package_catalog(qtbot):
+    plan = make_plan(
+        plan_row(
+            "DISABLE",
+            "com.google.android.apps.wellbeing",
+            "Digital Wellbeing: screen-time tracking",
+            "Screen-time dashboard and app timers",
+        ),
+        plan_row("ASK", "com.example.unknown", "Unknown app", "Its features"),
+    )
+    context = AppContext.fake(
+        translator=Translator("es"),
+        cli=FakePlanCli(plan),
+        adb_info=make_info(),
+        device_lister=lambda _info: [],
+    )
+    window = MainWindow(context)
+    qtbot.addWidget(window)
+    window.show()
+    window.start_flow()
+
+    context.session.attach(SERIAL, Transport.USB)
+    context.session.connected(SERIAL, Transport.USB, probe(), "pixel-8")
+    context.session.checked(probe(), "pixel-8")
+    window.show_page("review")
+
+    qtbot.waitUntil(lambda: window.review_page.model is not None, timeout=3000)
+
+    assert window.review_page.catalog is context.package_catalog
+    known = window.review_page.row_widgets["com.google.android.apps.wellbeing"]
+    assert "Bienestar digital" in known.why_label.text()
+    assert "tiempo de pantalla" in known.why_label.text()
+    assert known.english_note_label.isHidden() is True
+
+    unknown = window.review_page.row_widgets["com.example.unknown"]
+    assert "Unknown app" in unknown.why_label.text()
+    assert unknown.english_note_label.text() == "Detalles en inglés"
+    assert unknown.english_note_label.isHidden() is False
+
+
 def test_backup_then_review_runs_through_the_real_shell(qtbot, tmp_path, monkeypatch):
     root = tmp_path / ".cleanyourphone" / "backup"
     monkeypatch.setattr(backup_page_module, "default_backup_root", lambda: root)

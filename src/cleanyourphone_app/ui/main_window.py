@@ -266,7 +266,9 @@ class MainWindow(QMainWindow):
         self.backup_page = BackupPage(self.context)
         self.register_page("backup", self.backup_page)
 
-        self.review_page = ReviewPage(self.context)
+        self.review_page = ReviewPage(
+            self.context, catalog=self.context.package_catalog
+        )
         self.register_page("review", self.review_page)
 
         self.apply_page = ApplyPage(self.context)
