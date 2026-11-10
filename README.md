@@ -4,7 +4,8 @@
 
 This repository holds the optional local app for people who prefer buttons over prompts:
 pick a profile, review every package, apply in small batches, and restore from the undo journal.
-No root, no cloud, no telemetry.
+It can also offer optional Private DNS ad blocking (not YouTube) and show a local before/after
+benchmark. No root, no cloud, no telemetry.
 
 The product available today is the agent skill:
 [github.com/jparedesDS/cleanyourphone](https://github.com/jparedesDS/cleanyourphone).
