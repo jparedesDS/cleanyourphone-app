@@ -279,15 +279,25 @@ def _default_devices_runner(adb_path: Path) -> str:
 
 
 def list_devices(
-    adb_path: str | os.PathLike[str],
+    adb: AdbInfo,
     runner: Callable[[Path], str] | None = None,
 ) -> list[DeviceEntry]:
-    """Run ``adb devices -l`` and return serial, state, model and transport.
+    """Run ``adb devices -l`` on a version-checked ADB.
 
-    ``adb_path`` must come from :meth:`AdbLocator.find`, so a binary below the
-    minimum version is never used for device work.
+    Only an :class:`AdbInfo` returned by :meth:`AdbLocator.find` is accepted so
+    a raw, unverified path can never be executed. A forged outdated version is
+    rejected as well.
     """
-    path = Path(adb_path)
+    if not isinstance(adb, AdbInfo):
+        raise TypeError(
+            "list_devices requires an AdbInfo from AdbLocator.find(), "
+            f"not {type(adb).__name__}"
+        )
+    if adb.version < MIN_ADB_VERSION:
+        raise ValueError(
+            f"adb {adb.version} is older than the minimum {MIN_ADB_VERSION}"
+        )
+    path = adb.path
     active_runner = runner or _default_devices_runner
     try:
         output = active_runner(path)

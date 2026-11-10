@@ -5,6 +5,7 @@ import pytest
 from cleanyourphone_app.services.adb import (
     MIN_ADB_VERSION,
     AdbError,
+    AdbInfo,
     AdbLocator,
     DeviceEntry,
     list_devices,
@@ -24,6 +25,10 @@ def make_adb(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("")
     return path
+
+
+def make_info(path: Path = Path("adb.exe")) -> AdbInfo:
+    return AdbInfo(path=path, version=(37, 0, 1), version_text="Version 37.0.1")
 
 
 def test_parse_adb_version():
@@ -148,7 +153,7 @@ def test_cache_dir_defaults_under_local_app_data(tmp_path, monkeypatch):
 
 
 def test_list_devices_parses_serial_state_model_and_transport():
-    devices = list_devices(Path("adb.exe"), runner=lambda _: DEVICES_OUTPUT)
+    devices = list_devices(make_info(), runner=lambda _: DEVICES_OUTPUT)
     assert [device.serial for device in devices] == [
         "R58M12345",
         "adb-ABC123-xyz._adb-tls-connect._tcp.",
@@ -175,8 +180,9 @@ def test_list_devices_passes_the_adb_path_to_the_runner():
         seen.append(path)
         return "List of devices attached\n"
 
-    assert list_devices(Path("C:/tools/adb.exe"), runner=runner) == []
-    assert seen == [Path("C:/tools/adb.exe")]
+    info = make_info(Path("C:/tools/adb.exe"))
+    assert list_devices(info, runner=runner) == []
+    assert seen == [info.path]
 
 
 def test_list_devices_ignores_daemon_and_error_lines():
@@ -185,7 +191,7 @@ def test_list_devices_ignores_daemon_and_error_lines():
         "* daemon not running; starting now at tcp:5037\n"
         "adb: no devices/emulators found\n"
     )
-    assert list_devices(Path("adb.exe"), runner=lambda _: output) == []
+    assert list_devices(make_info(), runner=lambda _: output) == []
 
 
 def test_list_devices_wraps_runner_failures():
@@ -193,4 +199,24 @@ def test_list_devices_wraps_runner_failures():
         raise OSError("offline")
 
     with pytest.raises(AdbError):
-        list_devices(Path("adb.exe"), runner=offline)
+        list_devices(make_info(), runner=offline)
+
+
+def test_list_devices_rejects_a_raw_path_without_executing_it(tmp_path):
+    fake = make_adb(tmp_path / "adb.exe")
+    calls = []
+    with pytest.raises(TypeError):
+        list_devices(fake, runner=lambda path: calls.append(path) or "")
+    assert calls == []
+
+
+def test_list_devices_rejects_an_outdated_adb_info_without_executing_it():
+    outdated = AdbInfo(
+        path=Path("adb.exe"),
+        version=(30, 0, 0),
+        version_text="Version 30.0.0",
+    )
+    calls = []
+    with pytest.raises(ValueError):
+        list_devices(outdated, runner=lambda path: calls.append(path) or "")
+    assert calls == []
