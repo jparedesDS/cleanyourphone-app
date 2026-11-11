@@ -46,7 +46,7 @@
 
 ## 상태
 
-`v0.2.2`은 Early MVP이며 Windows 10/11 x64 전용이고 **코드 서명이 없습니다**.
+`v0.2.3`은 Early MVP이며 Windows 10/11 x64 전용이고 **코드 서명이 없습니다**.
 **OnePlus 6T(Android 11)**에서 처음부터 끝까지 테스트했습니다: 연결, 확인, 백업, 검토, 패키지
 하나 비활성화, 검증, 완료, 되돌리기.
 
@@ -89,8 +89,9 @@
   [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md)를
   참고하세요.
 - **업데이트 확인.** 앱은 최대 6시간에 한 번 GitHub에서 최신 릴리스를 확인합니다. 새 버전이 있으면
-  배너가 릴리스 페이지를 엽니다. 앱은 스스로 업데이트를 다운로드하거나 설치하지 않으며, 계정, 폰,
-  사용 데이터를 전송하지 않습니다.
+  배너가 **지금 업데이트**를 제공합니다. 앱이 설치 프로그램을 다운로드해 SHA-256을 확인한 뒤
+  종료하고, 설치한 다음 재시작합니다. 조용히 설치하는 일은 없으며 설정과 백업은 유지됩니다.
+  설치 프로그램은 서명되지 않아 Windows가 게시자 확인을 요청할 수 있습니다.
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="Wi-Fi 및 USB 안내와 연결 가이드 링크가 있는 CleanYourPhone 연결 화면" width="760">
@@ -98,11 +99,11 @@
 
 ## 설치
 
-`CleanYourPhone-Setup-0.2.2.exe`를
+`CleanYourPhone-Setup-0.2.3.exe`를
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest)에서
 다운로드하거나 로컬에서 빌드하세요.
 
-공개된 `v0.2.2` 설치 프로그램의 SHA-256:
+공개된 `v0.2.3` 설치 프로그램의 SHA-256:
 
 ```text
 B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
@@ -140,7 +141,8 @@ ADB는 포함하거나 재배포하지 않습니다. 앱은 기존 Platform-Tool
 - **모르면 멈춤.** 관리되는 기기, 여러 사용자, Android < 8, TV, 일치하는 프로필이 없는 폰은
   변경하지 않습니다.
 - **자동 텔레메트리 없음.** 앱은 로컬입니다. 유일한 네트워크 호출은 선택형 Google
-  Platform-Tools 다운로드, GitHub 업데이트 확인, 사용자가 전송을 누른 뒤의 피드백 양식입니다.
+  Platform-Tools 다운로드, GitHub 업데이트 확인과 설치 프로그램 다운로드, 사용자가 전송을 누른
+  뒤의 피드백 양식입니다.
 
 ## 빌드
 
@@ -163,7 +165,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 출력물:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (포터블 onedir 앱)
-- `dist/CleanYourPhone-Setup-0.2.2.exe` (설치 프로그램)
+- `dist/CleanYourPhone-Setup-0.2.3.exe` (설치 프로그램)
 
 `CLEANYOURPHONE_CLI`를 동결된 sidecar로 설정하고
 `python -m pytest tests/test_cli_contract.py`를 실행하면 실제 sidecar 계약 테스트가 포함됩니다.
@@ -177,7 +179,7 @@ python -m cleanyourphone_app --version
 ```
 
 앱 테스트 스위트는 연결 가드, 시리얼 고정, `documented` 프로필 확인, 배치당 하나 적용, 백업
-게이팅, 되돌리기, 피드백 페이로드, 피드백 동의, UI 문구를 다룹니다. 공개된 `0.2.2` 테스트 결과는
+게이팅, 되돌리기, 피드백 페이로드, 피드백 동의, UI 문구를 다룹니다. 공개된 `0.2.3` 테스트 결과는
 **526개 통과, 6개 건너뜀**입니다.
 
 ## 저장소 구조
@@ -192,7 +194,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 앱을 빌드하고 스모크 테스트한 뒤 설치 프로그램을 컴파일합니다. |
 | `packaging/installer.iss` | 사용자별 Inno Setup 설치 프로그램. |
 | `docs/superpowers/` | 과거 설계 및 구현 계획. |
-| `tests/` | Pytest 스위트. `0.2.2`에서 526개 통과, 6개 건너뜀. |
+| `tests/` | Pytest 스위트. `0.2.3`에서 526개 통과, 6개 건너뜀. |
 
 ## 제한 사항
 

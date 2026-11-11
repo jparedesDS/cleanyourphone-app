@@ -46,7 +46,7 @@ celulares que ele consegue verificar.
 
 ## Status
 
-`v0.2.2` é um Early MVP, só para Windows 10/11 x64 e **sem assinatura de código**. Foi testada de ponta
+`v0.2.3` é um Early MVP, só para Windows 10/11 x64 e **sem assinatura de código**. Foi testada de ponta
 a ponta em um **OnePlus 6T (Android 11)**: conectar, conferir, backup, revisar, desativar um pacote,
 verificar, concluir e desfazer.
 
@@ -88,8 +88,10 @@ pacotes podem variar por região, operadora ou atualização.
   consentimento explícito. Sem telemetria automática. Veja
   [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md).
 - **Checagem de atualização.** No máximo uma vez a cada seis horas, o app consulta o GitHub para saber
-  qual é a versão mais recente. Se existir uma versão mais nova, um banner abre a página do release. O
-  app nunca baixa nem instala uma atualização por conta própria, e não envia dados de conta, celular ou uso.
+  qual é a versão mais recente. Se existir uma versão mais nova, um banner oferece **Atualizar agora**:
+  o app baixa o instalador, verifica o SHA-256, fecha, instala e reinicia. Ele nunca instala em silêncio;
+  suas configurações e backups são mantidos. O instalador não é assinado, então o Windows pode pedir que
+  você confirme o editor.
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="Tela de conexão do app CleanYourPhone com instruções de Wi-Fi e USB e o link do guia de conexão" width="760">
@@ -97,11 +99,11 @@ pacotes podem variar por região, operadora ou atualização.
 
 ## Instalação
 
-Baixe o `CleanYourPhone-Setup-0.2.2.exe` em
+Baixe o `CleanYourPhone-Setup-0.2.3.exe` em
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), ou compile
 localmente.
 
-SHA-256 do instalador publicado da `v0.2.2`:
+SHA-256 do instalador publicado da `v0.2.3`:
 
 ```text
 B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
@@ -141,8 +143,8 @@ O app é uma GUI sobre a mesma CLI; as proteções não mudam:
 - **Pare no desconhecido.** Aparelhos gerenciados, múltiplos usuários, Android < 8, TVs e celulares sem
   perfil correspondente não são alterados.
 - **Sem telemetria automática.** O app é local. As únicas chamadas de rede são o download opcional do
-  Google Platform-Tools, a checagem de atualização do GitHub e o formulário de feedback depois que a
-  pessoa aperta Enviar.
+  Google Platform-Tools, a checagem de atualização do GitHub, o download do instalador e o formulário de
+  feedback depois que a pessoa aperta Enviar.
 
 ## Build
 
@@ -165,7 +167,7 @@ O script:
 Saídas:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (app portátil onedir)
-- `dist/CleanYourPhone-Setup-0.2.2.exe` (instalador)
+- `dist/CleanYourPhone-Setup-0.2.3.exe` (instalador)
 
 Defina `CLEANYOURPHONE_CLI` para o sidecar congelado e rode
 `python -m pytest tests/test_cli_contract.py` para incluir o teste de contrato com o sidecar real.
@@ -180,7 +182,7 @@ python -m cleanyourphone_app --version
 
 A suíte do app cobre as proteções de conexão, a fixação de serial, a confirmação de perfil documentado,
 a aplicação de um por lote, o bloqueio por backup, o desfazer, os payloads de feedback, o consentimento
-de feedback e os textos da interface. O resultado publicado da suíte `0.2.2` é **526 passed, 6 skipped**.
+de feedback e os textos da interface. O resultado publicado da suíte `0.2.3` é **526 passed, 6 skipped**.
 
 ## Mapa do repositório
 
@@ -194,7 +196,7 @@ de feedback e os textos da interface. O resultado publicado da suíte `0.2.2` é
 | `scripts/build-app.ps1` | Compila o app, faz smoke test e compila o instalador. |
 | `packaging/installer.iss` | Instalador Inno Setup por usuário. |
 | `docs/superpowers/` | Design histórico e plano de implementação. |
-| `tests/` | Suíte Pytest; 526 passando, 6 ignorados em `0.2.2`. |
+| `tests/` | Suíte Pytest; 526 passando, 6 ignorados em `0.2.3`. |
 
 ## Limitações
 

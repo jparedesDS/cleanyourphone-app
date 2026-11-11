@@ -28,6 +28,26 @@ def test_update_banner_shows_and_can_be_dismissed(qtbot):
     assert not window.update_banner.isVisible()
 
 
+def test_banner_offers_update_now_when_the_installer_is_verified(qtbot):
+    info = UpdateInfo(
+        version="0.2.3",
+        tag="v0.2.3",
+        installer_url=(
+            "https://github.com/jparedesDS/cleanyourphone-app/releases/download/"
+            "v0.2.3/CleanYourPhone-Setup-0.2.3.exe"
+        ),
+        sha256="a" * 64,
+    )
+    window = MainWindow(context_with_checker(lambda _version: info))
+    qtbot.addWidget(window)
+    window.show()
+
+    window.update_button.click()
+
+    qtbot.waitUntil(lambda: window.update_banner.isVisible(), timeout=3000)
+    assert window.update_open_button.text() == "Update now"
+
+
 def test_manual_check_reports_when_there_is_no_update(qtbot):
     window = MainWindow(context_with_checker(lambda _version: None))
     qtbot.addWidget(window)

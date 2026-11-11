@@ -9,6 +9,9 @@ language switch is part of the fixed header, so it is visible on every screen.
 from __future__ import annotations
 
 import logging
+import os
+import sys
+import threading
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -16,11 +19,14 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QCloseEvent, QDesktopServices, QIcon
 from PySide6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QFrame,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
+    QProgressDialog,
     QPushButton,
     QStackedWidget,
     QVBoxLayout,
@@ -31,7 +37,14 @@ from cleanyourphone_app.domain.apply import ApplySummary
 from cleanyourphone_app.domain.session import SessionError
 from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
 from cleanyourphone_app.services.logging import LOGGER_NAME
-from cleanyourphone_app.services.updates import UpdateInfo
+from cleanyourphone_app.services.updates import (
+    UpdateCancelled,
+    UpdateInfo,
+    UpdateInstallError,
+    default_update_dir,
+    download_update,
+    launch_update_helper,
+)
 from cleanyourphone_app.ui.dialogs import FeedbackDialog
 from cleanyourphone_app.ui.pages.apply import ApplyPage
 from cleanyourphone_app.ui.pages.backup import BackupPage
@@ -149,10 +162,16 @@ class MainWindow(QMainWindow):
 
         self._pending_update: UpdateInfo | None = None
         self._update_check_manual = False
+        self._update_cancel = threading.Event()
+        self._update_progress: QProgressDialog | None = None
         self._update_call = BackgroundCall(self)
         self._update_call.succeeded.connect(self._update_succeeded)
         self._update_call.failed.connect(self._update_failed)
         self._update_call.finished.connect(self._update_finished)
+        self._download_call = BackgroundCall(self)
+        self._download_call.succeeded.connect(self._download_succeeded)
+        self._download_call.failed.connect(self._download_failed)
+        self._download_call.finished.connect(self._download_finished)
 
         self._build_ui()
         self._register_default_pages()
@@ -405,7 +424,9 @@ class MainWindow(QMainWindow):
         self.update_banner_label.setText(
             tr("update.available").format(version=result.version)
         )
-        self.update_open_button.setText(tr("update.open"))
+        self.update_open_button.setText(
+            tr("update.install") if result.can_install else tr("update.open")
+        )
         self.update_later_button.setText(tr("update.later"))
         self.update_banner.show()
 
@@ -421,8 +442,105 @@ class MainWindow(QMainWindow):
         self.update_button.setText(self.context.translator.tr("update.check"))
 
     def _open_update(self, checked: bool = False) -> None:
-        if self._pending_update is not None:
-            QDesktopServices.openUrl(QUrl(self._pending_update.url))
+        """Offer the update; only a frozen install can download and run it."""
+        info = self._pending_update
+        if info is None:
+            return
+        tr = self.context.translator.tr
+        if not info.can_install or not getattr(sys, "frozen", False):
+            QDesktopServices.openUrl(QUrl(info.url))
+            return
+        if self._writes_in_flight():
+            QMessageBox.information(self, tr("update.check"), tr("update.busy"))
+            return
+
+        box = QMessageBox(self)
+        box.setWindowTitle(tr("update.check"))
+        box.setText(tr("update.confirm").format(version=info.version))
+        install_button = box.addButton(
+            tr("update.install"), QMessageBox.ButtonRole.AcceptRole
+        )
+        open_button = box.addButton(
+            tr("update.open"), QMessageBox.ButtonRole.ActionRole
+        )
+        box.addButton(tr("common.cancel"), QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        if box.clickedButton() is install_button:
+            self._start_update_download(info)
+        elif box.clickedButton() is open_button:
+            QDesktopServices.openUrl(QUrl(info.url))
+
+    def _start_update_download(self, info: UpdateInfo) -> None:
+        tr = self.context.translator.tr
+        self._update_cancel.clear()
+        self._update_progress = QProgressDialog(
+            tr("update.downloading"),
+            tr("common.cancel"),
+            0,
+            0,
+            self,
+        )
+        self._update_progress.setWindowTitle(tr("update.check"))
+        self._update_progress.setWindowModality(Qt.WindowModality.WindowModal)
+        self._update_progress.setMinimumDuration(0)
+        self._update_progress.canceled.connect(self._cancel_update_download)
+        self._update_progress.show()
+        started = self._download_call.start(
+            lambda: download_update(
+                info,
+                default_update_dir(),
+                cancel=self._update_cancel.is_set,
+            )
+        )
+        if not started:
+            self._close_update_progress()
+            QMessageBox.warning(
+                self, tr("update.check"), tr("update.failed_download")
+            )
+
+    def _cancel_update_download(self) -> None:
+        self._update_cancel.set()
+
+    def _download_succeeded(self, result: object) -> None:
+        self._close_update_progress()
+        if not isinstance(result, Path):
+            return
+        tr = self.context.translator.tr
+        try:
+            launch_update_helper(
+                result,
+                sys.executable,
+                pid=os.getpid(),
+                directory=result.parent,
+            )
+        except UpdateInstallError as exc:
+            logging.getLogger(LOGGER_NAME).warning("could not start update: %s", exc)
+            QMessageBox.warning(
+                self, tr("update.check"), tr("update.failed_download")
+            )
+            return
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
+
+    def _download_failed(self, error: object) -> None:
+        self._close_update_progress()
+        tr = self.context.translator.tr
+        if isinstance(error, UpdateCancelled):
+            self.statusBar().showMessage(tr("update.cancelled"), 5000)
+            return
+        logging.getLogger(LOGGER_NAME).warning("update download failed: %s", error)
+        QMessageBox.warning(self, tr("update.check"), tr("update.failed_download"))
+
+    def _download_finished(self) -> None:
+        self._close_update_progress()
+
+    def _close_update_progress(self) -> None:
+        progress = self._update_progress
+        self._update_progress = None
+        if progress is not None:
+            progress.close()
+            progress.deleteLater()
 
     def _dismiss_update(self, checked: bool = False) -> None:
         self.update_banner.hide()
@@ -596,6 +714,9 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
 
+        if self._download_call.active:
+            self._update_cancel.set()
+            self._download_call.shutdown(2000)
         self._update_call.shutdown(2000)
         for page in (
             self.setup_page,
@@ -629,12 +750,18 @@ class MainWindow(QMainWindow):
         )
         self.update_button.setToolTip(tr("update.check"))
         self.update_button.setAccessibleName(tr("update.check"))
-        self.update_open_button.setText(tr("update.open"))
         self.update_later_button.setText(tr("update.later"))
         if self._pending_update is not None:
+            self.update_open_button.setText(
+                tr("update.install")
+                if self._pending_update.can_install
+                else tr("update.open")
+            )
             self.update_banner_label.setText(
                 tr("update.available").format(version=self._pending_update.version)
             )
+        else:
+            self.update_open_button.setText(tr("update.open"))
         self.language_label.setText(tr("common.language"))
         self.language_switch.setAccessibleName(tr("common.language"))
 

@@ -4,8 +4,8 @@ import sys
 from cleanyourphone_app.version import __version__
 
 
-def test_version_is_0_2_2():
-    assert __version__ == "0.2.2"
+def test_version_is_0_2_3():
+    assert __version__ == "0.2.3"
 
 
 def test_module_version_flag():
@@ -16,4 +16,4 @@ def test_module_version_flag():
         text=True,
     )
     assert result.returncode == 0
-    assert result.stdout.strip() == "CleanYourPhone app 0.2.2"
+    assert result.stdout.strip() == "CleanYourPhone app 0.2.3"

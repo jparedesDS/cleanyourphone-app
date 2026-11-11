@@ -28,7 +28,7 @@ DIST = APP_ROOT / "dist"
 APP_EXE = DIST / "CleanYourPhone" / "CleanYourPhone.exe"
 SIDECAR_EXE = DIST / "CleanYourPhone" / "resources" / "cli" / "cleanyourphone.exe"
 BUNDLED_PROFILES = DIST / "CleanYourPhone" / "resources" / "profiles"
-SETUP_EXE = DIST / "CleanYourPhone-Setup-0.2.2.exe"
+SETUP_EXE = DIST / "CleanYourPhone-Setup-0.2.3.exe"
 
 
 def read(path: Path) -> str:
@@ -44,7 +44,7 @@ def test_sidecar_build_pins_the_cli_tag_and_builds_a_onedir_exe():
     script = read(SIDECAR_SCRIPT)
     assert "https://github.com/jparedesDS/cleanyourphone" in script
     assert "v0.3.4" in script
-    assert "v0.2.2" not in script
+    assert "v0.2.3" not in script
     assert ".build/cli-src" in script
     assert ".build/cli-venv" in script
     assert "cleanyourphone.phone" in script
@@ -64,7 +64,7 @@ def test_app_build_runs_the_sidecar_then_the_installer():
     assert "ISCC" in script
     assert "CleanYourPhone.exe" in script
     assert "CleanYourPhone 0.3.4" in script
-    assert "CleanYourPhone-Setup-0.2.2.exe" in script
+    assert "CleanYourPhone-Setup-0.2.3.exe" in script
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +95,7 @@ def test_installer_is_per_user_and_never_touches_user_data():
     assert "PrivilegesRequired=lowest" in iss
     assert r"{autoprograms}\CleanYourPhone" in iss
     assert "THIRD_PARTY_NOTICES.md" in iss
-    assert "CleanYourPhone-Setup-0.2.2" in iss
+    assert "CleanYourPhone-Setup-0.2.3" in iss
     assert not re.search(r"(?m)^\[UninstallDelete\]", iss)
 
 
@@ -122,10 +122,10 @@ def test_ci_builds_smokes_and_uploads_the_installer():
     assert r"dist\CleanYourPhone\resources\cli\cleanyourphone.exe --version" in workflow
     assert r"dist\CleanYourPhone\CleanYourPhone.exe --version" in workflow
     assert "CleanYourPhone 0.3.4" in workflow
-    assert "CleanYourPhone 0.2.2" not in workflow
+    assert "CleanYourPhone 0.2.3" not in workflow
     assert "choco install innosetup" in workflow
     assert "actions/upload-artifact" in workflow
-    assert "CleanYourPhone-Setup-0.2.2.exe" in workflow
+    assert "CleanYourPhone-Setup-0.2.3.exe" in workflow
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +225,7 @@ def test_built_app_reports_its_version():
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "CleanYourPhone app 0.2.2"
+    assert result.stdout.strip() == "CleanYourPhone app 0.2.3"
 
 
 @pytest.mark.skipif(not SETUP_EXE.is_file(), reason="installer has not been built")

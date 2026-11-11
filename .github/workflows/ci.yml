@@ -50,7 +50,7 @@ jobs:
         run: |
           dist\CleanYourPhone\CleanYourPhone.exe --version > app-version.txt
           type app-version.txt
-          findstr /x /c:"CleanYourPhone app 0.2.2" app-version.txt >nul
+          findstr /x /c:"CleanYourPhone app 0.2.3" app-version.txt >nul
           if errorlevel 1 exit /b 1
 
       - name: Smoke test the bundled profile catalog
@@ -81,7 +81,7 @@ jobs:
           }
           & $iscc /Qp packaging\installer.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (-not (Test-Path "dist\CleanYourPhone-Setup-0.2.2.exe")) {
+          if (-not (Test-Path "dist\CleanYourPhone-Setup-0.2.3.exe")) {
             throw "The installer was not created."
           }
 
@@ -93,6 +93,6 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: CleanYourPhone-Setup-0.2.2
-          path: dist/CleanYourPhone-Setup-0.2.2.exe
+          name: CleanYourPhone-Setup-0.2.3
+          path: dist/CleanYourPhone-Setup-0.2.3.exe
           if-no-files-found: error

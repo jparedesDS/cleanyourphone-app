@@ -46,7 +46,7 @@ Hauptprodukt; diese App ist der einfache Weg für die Smartphones, die sie verif
 
 ## Status
 
-`v0.2.2` ist eine frühe MVP-Version, nur für Windows 10/11 x64 und **nicht code-signiert**. Sie wurde
+`v0.2.3` ist eine frühe MVP-Version, nur für Windows 10/11 x64 und **nicht code-signiert**. Sie wurde
 Ende-zu-Ende auf einem **OnePlus 6T (Android 11)** getestet: verbinden, prüfen, Backup, Review, ein
 Paket deaktivieren, verifizieren, fertig und rückgängig.
 
@@ -89,8 +89,10 @@ Gerät; Pakete können je nach Region, Mobilfunkanbieter oder Update abweichen.
   Zustimmung an den Maintainer gesendet werden. Keine automatische Telemetrie. Siehe
   [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md).
 - **Update-Prüfung.** Höchstens alle sechs Stunden fragt die App bei GitHub nach der neuesten
-  Version. Gibt es eine neuere Version, öffnet ein Banner die Release-Seite. Die App lädt oder
-  installiert ein Update nie selbst und sendet keine Konto-, Smartphone- oder Nutzungsdaten.
+  Version. Gibt es eine neuere Version, bietet ein Banner **Jetzt aktualisieren** an: Die App
+  lädt den Installer herunter, prüft seine SHA-256, schließt sich, installiert und startet neu.
+  Sie installiert nie unbemerkt; deine Einstellungen und Backups bleiben erhalten. Der Installer
+  ist nicht signiert, daher kann Windows dich bitten, den Herausgeber zu bestätigen.
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="Verbindungsbildschirm der CleanYourPhone-App mit Anweisungen für WLAN und USB und dem Link zur Verbindungsanleitung" width="760">
@@ -98,11 +100,11 @@ Gerät; Pakete können je nach Region, Mobilfunkanbieter oder Update abweichen.
 
 ## Installieren
 
-Lade `CleanYourPhone-Setup-0.2.2.exe` von
+Lade `CleanYourPhone-Setup-0.2.3.exe` von
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) herunter oder baue
 die App lokal.
 
-SHA-256 des veröffentlichten Installers von `v0.2.2`:
+SHA-256 des veröffentlichten Installers von `v0.2.3`:
 
 ```text
 B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
@@ -145,8 +147,8 @@ Die App ist eine GUI auf Basis derselben CLI; die Leitplanken verschieben sich n
 - **Stopp bei Unbekanntem.** Verwaltete Geräte, mehrere Benutzer, Android < 8, TVs und Smartphones
   ohne passendes Profil werden nicht verändert.
 - **Keine automatische Telemetrie.** Die App ist lokal. Ihre einzigen Netzwerkaufrufe sind der
-  optionale Download der Google Platform-Tools, die GitHub-Update-Prüfung und das
-  Feedback-Formular, nachdem die Person auf Senden gedrückt hat.
+  optionale Download der Google Platform-Tools, die GitHub-Update-Prüfung samt Installer-Download
+  und das Feedback-Formular, nachdem die Person auf Senden gedrückt hat.
 
 ## Build
 
@@ -169,7 +171,7 @@ Das Skript:
 Ausgaben:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (portable Onedir-App)
-- `dist/CleanYourPhone-Setup-0.2.2.exe` (Installer)
+- `dist/CleanYourPhone-Setup-0.2.3.exe` (Installer)
 
 Setze `CLEANYOURPHONE_CLI` auf das eingefrorene Sidecar und führe
 `python -m pytest tests/test_cli_contract.py` aus, um den Vertragstest mit dem echten Sidecar
@@ -186,7 +188,7 @@ python -m cleanyourphone_app --version
 Die App-Suite deckt die Verbindungs-Guards, das Pinning der Seriennummer, die Bestätigung von
 `documented`-Profilen, das Anwenden eines Pakets pro Batch, die Backup-Sperre, das
 Rückgängigmachen, Feedback-Payloads, die Feedback-Zustimmung und die UI-Texte ab. Das veröffentlichte
-Ergebnis der `0.2.2`-Suite ist **526 bestanden, 6 übersprungen**.
+Ergebnis der `0.2.3`-Suite ist **526 bestanden, 6 übersprungen**.
 
 ## Repository-Übersicht
 
@@ -200,7 +202,7 @@ Ergebnis der `0.2.2`-Suite ist **526 bestanden, 6 übersprungen**.
 | `scripts/build-app.ps1` | Baut die App, macht einen Smoke-Test und kompiliert den Installer. |
 | `packaging/installer.iss` | Inno-Setup-Installer pro Benutzer. |
 | `docs/superpowers/` | Historisches Design und Implementierungsplan. |
-| `tests/` | Pytest-Suite; 526 bestanden, 6 übersprungen bei `0.2.2`. |
+| `tests/` | Pytest-Suite; 526 bestanden, 6 übersprungen bei `0.2.3`. |
 
 ## Einschränkungen
 

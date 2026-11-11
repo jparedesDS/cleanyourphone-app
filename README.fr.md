@@ -46,7 +46,7 @@ app est le chemin simple pour les téléphones qu’elle peut vérifier.
 
 ## État
 
-`v0.2.2` est un Early MVP, Windows 10/11 x64 uniquement, et **non signé**. La version a été testée de
+`v0.2.3` est un Early MVP, Windows 10/11 x64 uniquement, et **non signé**. La version a été testée de
 bout en bout sur un **OnePlus 6T (Android 11)** : connexion, vérification, sauvegarde, relecture,
 désactivation d’un paquet, vérification, fin et annulation.
 
@@ -89,9 +89,10 @@ appareil réel ; les paquets peuvent varier selon la région, l’opérateur ou 
   mainteneur après consentement explicite. Aucune télémétrie automatique. Voir
   [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md).
 - **Vérification des mises à jour.** Au plus une fois toutes les six heures, l’app demande à GitHub la
-  dernière version publiée. Si une version plus récente existe, une bannière ouvre la page de
-  publication. L’app ne télécharge ni n’installe jamais une mise à jour d’elle-même et n’envoie aucune
-  donnée de compte, de téléphone ou d’usage.
+  dernière version publiée. Si une version plus récente existe, une bannière propose **Mettre à jour
+  maintenant** : l’app télécharge l’installateur, vérifie son SHA-256, se ferme, s’installe et
+  redémarre. Elle n’installe jamais silencieusement ; vos réglages et sauvegardes sont conservés.
+  L’installateur n’est pas signé, Windows peut donc vous demander de confirmer l’éditeur.
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="Écran de connexion de l’app CleanYourPhone avec les instructions Wi-Fi et USB et le lien vers le guide de connexion" width="760">
@@ -99,11 +100,11 @@ appareil réel ; les paquets peuvent varier selon la région, l’opérateur ou 
 
 ## Installation
 
-Téléchargez `CleanYourPhone-Setup-0.2.2.exe` depuis
+Téléchargez `CleanYourPhone-Setup-0.2.3.exe` depuis
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), ou compilez-le
 localement.
 
-SHA-256 de l’installateur publié `v0.2.2` :
+SHA-256 de l’installateur publié `v0.2.3` :
 
 ```text
 B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
@@ -146,8 +147,8 @@ L’app est une GUI au-dessus du même CLI ; les garde-fous ne bougent pas :
 - **Arrêt sur l’inconnu.** Les appareils gérés, les utilisateurs multiples, Android < 8, les TV et les
   téléphones sans profil correspondant ne sont pas modifiés.
 - **Aucune télémétrie automatique.** L’app est locale. Ses seuls appels réseau sont le téléchargement
-  facultatif de Google Platform-Tools, la vérification des mises à jour sur GitHub et le formulaire de
-  retour après un clic sur Envoyer.
+  facultatif de Google Platform-Tools, la vérification des mises à jour sur GitHub et le téléchargement
+  de l’installateur, ainsi que le formulaire de retour après un clic sur Envoyer.
 
 ## Compilation
 
@@ -170,7 +171,7 @@ Le script :
 Sorties :
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (app onedir portable)
-- `dist/CleanYourPhone-Setup-0.2.2.exe` (installateur)
+- `dist/CleanYourPhone-Setup-0.2.3.exe` (installateur)
 
 Définissez `CLEANYOURPHONE_CLI` sur le sidecar figé et exécutez
 `python -m pytest tests/test_cli_contract.py` pour inclure le test de contrat avec le vrai sidecar.
@@ -186,7 +187,7 @@ python -m cleanyourphone_app --version
 La suite de l’app couvre les garde-fous de connexion, l’épinglage du numéro de série, la confirmation
 des profils `documented`, l’application d’un paquet par lot, le blocage en l’absence de sauvegarde,
 l’annulation, les payloads de retour, le consentement au retour et les textes de l’UI. Le résultat
-publié pour `0.2.2` est **526 tests réussis, 6 ignorés**.
+publié pour `0.2.3` est **526 tests réussis, 6 ignorés**.
 
 ## Carte du dépôt
 
@@ -200,7 +201,7 @@ publié pour `0.2.2` est **526 tests réussis, 6 ignorés**.
 | `scripts/build-app.ps1` | Construit l’app, fait le smoke test et compile l’installateur. |
 | `packaging/installer.iss` | Installateur Inno Setup par utilisateur. |
 | `docs/superpowers/` | Conception historique et plan d’implémentation. |
-| `tests/` | Suite Pytest ; 526 tests réussis, 6 ignorés sur `0.2.2`. |
+| `tests/` | Suite Pytest ; 526 tests réussis, 6 ignorés sur `0.2.3`. |
 
 ## Limites
 
