@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">
+  <a href="https://cleanyourphone.org/">
     <img src="assets/banner.png" alt="CleanYourPhone — あなたのスマホを、余計なものなしで" width="100%">
   </a>
 </p>
@@ -7,8 +7,8 @@
 <p align="center">
   <b>オプションの Windows アプリ</b> ·
   <a href="https://github.com/jparedesDS/cleanyourphone">Skill と CLI</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">ウェブサイト</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/#feedback">フィードバック</a>
+  <a href="https://cleanyourphone.org/">ウェブサイト</a> ·
+  <a href="https://cleanyourphone.org/#feedback">フィードバック</a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 **CleanYourPhone skill で使う、オプションの Windows アプリ。** プロンプトよりボタンが好きな人のための、ローカルで元に戻せるデブロートフローです。接続、確認、バックアップ、すべてのパッケージのレビュー、バッチ適用、検証、元に戻す。skill が主力プロダクトであり、このアプリは検証できるスマホのための簡単な道です。
 
-[Early MVP をダウンロード](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) · [Skill と CLI](https://github.com/jparedesDS/cleanyourphone) · [接続ガイド](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md) · [フィードバック](https://jparedesds.github.io/cleanyourphone-web/#feedback)
+[Early MVP をダウンロード](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) · [Skill と CLI](https://github.com/jparedesDS/cleanyourphone) · [接続ガイド](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md) · [フィードバック](https://cleanyourphone.org/#feedback)
 
 ## 状態
 
@@ -164,7 +164,7 @@ python -m cleanyourphone_app --version
 ## リンク
 
 - **Skill と CLI:** <https://github.com/jparedesDS/cleanyourphone>
-- **ウェブサイト:** <https://jparedesds.github.io/cleanyourphone-web/>
+- **ウェブサイト:** <https://cleanyourphone.org/>
 - **接続ガイド:** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md>
 - **フィードバックとプライバシー:** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md>
 - **プロファイル:** <https://github.com/jparedesDS/cleanyourphone/tree/main/profiles>

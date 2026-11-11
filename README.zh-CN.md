@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">
+  <a href="https://cleanyourphone.org/">
     <img src="assets/banner.png" alt="CleanYourPhone — 你的手机，减去多余" width="100%">
   </a>
 </p>
@@ -7,8 +7,8 @@
 <p align="center">
   <b>可选的 Windows 应用</b> ·
   <a href="https://github.com/jparedesDS/cleanyourphone">Skill 与 CLI</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">网站</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/#feedback">反馈</a>
+  <a href="https://cleanyourphone.org/">网站</a> ·
+  <a href="https://cleanyourphone.org/#feedback">反馈</a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 **CleanYourPhone Skill 的可选 Windows 应用。** 面向更喜欢点按钮而不是输入提示词的人，提供本地、可逆的精简流程：连接、检查、备份、逐个审阅应用包、分批执行、验证和撤销。Skill 仍是主要产品；这个应用是它能验证的手机的简单路径。
 
-[下载早期 MVP](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) · [Skill 与 CLI](https://github.com/jparedesDS/cleanyourphone) · [连接指南](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md) · [反馈](https://jparedesds.github.io/cleanyourphone-web/#feedback)
+[下载早期 MVP](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) · [Skill 与 CLI](https://github.com/jparedesDS/cleanyourphone) · [连接指南](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md) · [反馈](https://cleanyourphone.org/#feedback)
 
 ## 状态
 
@@ -164,7 +164,7 @@ python -m cleanyourphone_app --version
 ## 链接
 
 - **Skill 与 CLI：** <https://github.com/jparedesDS/cleanyourphone>
-- **网站：** <https://jparedesds.github.io/cleanyourphone-web/>
+- **网站：** <https://cleanyourphone.org/>
 - **连接指南：** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md>
 - **反馈与隐私：** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md>
 - **机型配置：** <https://github.com/jparedesDS/cleanyourphone/tree/main/profiles>

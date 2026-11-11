@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">
+  <a href="https://cleanyourphone.org/">
     <img src="assets/banner.png" alt="CleanYourPhone — 불필요한 것을 뺀, 당신의 폰" width="100%">
   </a>
 </p>
@@ -7,8 +7,8 @@
 <p align="center">
   <b>선택 사항인 Windows 앱</b> ·
   <a href="https://github.com/jparedesDS/cleanyourphone">스킬과 CLI</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">웹사이트</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/#feedback">피드백</a>
+  <a href="https://cleanyourphone.org/">웹사이트</a> ·
+  <a href="https://cleanyourphone.org/#feedback">피드백</a>
 </p>
 
 <p align="center">
@@ -42,7 +42,7 @@
 [Early MVP 다운로드](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) ·
 [스킬과 CLI](https://github.com/jparedesDS/cleanyourphone) ·
 [연결 가이드](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md) ·
-[피드백](https://jparedesds.github.io/cleanyourphone-web/#feedback)
+[피드백](https://cleanyourphone.org/#feedback)
 
 ## 상태
 
@@ -203,7 +203,7 @@ python -m cleanyourphone_app --version
 ## 링크
 
 - **스킬과 CLI:** <https://github.com/jparedesDS/cleanyourphone>
-- **웹사이트:** <https://jparedesds.github.io/cleanyourphone-web/>
+- **웹사이트:** <https://cleanyourphone.org/>
 - **연결 가이드:** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md>
 - **피드백과 개인정보:** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md>
 - **프로필:** <https://github.com/jparedesDS/cleanyourphone/tree/main/profiles>

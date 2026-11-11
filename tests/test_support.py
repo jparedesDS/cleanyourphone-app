@@ -63,11 +63,11 @@ def test_no_device_profile_links_to_the_skill_site():
     decision = decide_support(probe(auto_apply_profiles=()))
     assert decision.allowed is False
     assert decision.reason == "no_device_profile"
-    assert decision.link == "https://jparedesds.github.io/cleanyourphone-web/"
+    assert decision.link == "https://cleanyourphone.org/"
 
 
 def test_skill_url_is_the_public_site():
-    assert SKILL_URL == "https://jparedesds.github.io/cleanyourphone-web/"
+    assert SKILL_URL == "https://cleanyourphone.org/"
 
 
 def test_documented_profile_is_allowed_for_manual_review():

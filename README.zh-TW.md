@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">
+  <a href="https://cleanyourphone.org/">
     <img src="assets/banner.png" alt="CleanYourPhone — 你的手機，減去多餘" width="100%">
   </a>
 </p>
@@ -7,8 +7,8 @@
 <p align="center">
   <b>選用的 Windows 應用程式</b> ·
   <a href="https://github.com/jparedesDS/cleanyourphone">Skill 與 CLI</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">網站</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/#feedback">意見回饋</a>
+  <a href="https://cleanyourphone.org/">網站</a> ·
+  <a href="https://cleanyourphone.org/#feedback">意見回饋</a>
 </p>
 
 <p align="center">
@@ -41,7 +41,7 @@
 [下載 Early MVP](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) ·
 [Skill 與 CLI](https://github.com/jparedesDS/cleanyourphone) ·
 [連線指南](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md) ·
-[意見回饋](https://jparedesds.github.io/cleanyourphone-web/#feedback)
+[意見回饋](https://cleanyourphone.org/#feedback)
 
 ## 狀態
 
@@ -199,7 +199,7 @@ python -m cleanyourphone_app --version
 ## 連結
 
 - **Skill 與 CLI：** <https://github.com/jparedesDS/cleanyourphone>
-- **網站：** <https://jparedesds.github.io/cleanyourphone-web/>
+- **網站：** <https://cleanyourphone.org/>
 - **連線指南：** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md>
 - **意見回饋與隱私：** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md>
 - **設定檔：** <https://github.com/jparedesDS/cleanyourphone/tree/main/profiles>

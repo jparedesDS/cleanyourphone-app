@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">
+  <a href="https://cleanyourphone.org/">
     <img src="assets/banner.png" alt="CleanYourPhone — seu celular, sem o que sobra" width="100%">
   </a>
 </p>
@@ -7,8 +7,8 @@
 <p align="center">
   <b>App opcional para Windows</b> ·
   <a href="https://github.com/jparedesDS/cleanyourphone">Skill e CLI</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/">Site</a> ·
-  <a href="https://jparedesds.github.io/cleanyourphone-web/#feedback">Feedback</a>
+  <a href="https://cleanyourphone.org/">Site</a> ·
+  <a href="https://cleanyourphone.org/#feedback">Feedback</a>
 </p>
 
 <p align="center">
@@ -42,7 +42,7 @@ celulares que ele consegue verificar.
 [Baixe o Early MVP](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) ·
 [Skill e CLI](https://github.com/jparedesDS/cleanyourphone) ·
 [Guia de conexão](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md) ·
-[Feedback](https://jparedesds.github.io/cleanyourphone-web/#feedback)
+[Feedback](https://cleanyourphone.org/#feedback)
 
 ## Status
 
@@ -203,7 +203,7 @@ de feedback e os textos da interface. O resultado publicado da suíte `0.2.0` é
 ## Links
 
 - **Skill e CLI:** <https://github.com/jparedesDS/cleanyourphone>
-- **Site:** <https://jparedesds.github.io/cleanyourphone-web/>
+- **Site:** <https://cleanyourphone.org/>
 - **Guia de conexão:** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md>
 - **Feedback e privacidade:** <https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md>
 - **Perfis:** <https://github.com/jparedesDS/cleanyourphone/tree/main/profiles>

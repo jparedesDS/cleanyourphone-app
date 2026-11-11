@@ -168,7 +168,7 @@ def test_no_profile_shows_skill_link(qtbot, fake_cli, fake_context):
     run_check(qtbot, page)
 
     assert page.next_page == "blocked"
-    assert page.blocked_link == "https://jparedesds.github.io/cleanyourphone-web/"
+    assert page.blocked_link == "https://cleanyourphone.org/"
     assert page.blocked_reason == "no_device_profile"
     assert fake_context.session.state is SessionState.BLOCKED
     assert fake_context.session.blocked_reason == "no_device_profile"

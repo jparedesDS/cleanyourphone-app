@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from .models import ProbeData
 
-SKILL_URL = "https://jparedesds.github.io/cleanyourphone-web/"
+SKILL_URL = "https://cleanyourphone.org/"
 CONNECT_GUIDE_URL = (
     "https://github.com/jparedesDS/cleanyourphone/blob/main/docs/CONNECT.md"
 )
