@@ -106,7 +106,7 @@
 공개된 `v0.2.3` 설치 프로그램의 SHA-256:
 
 ```text
-B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
+2830F4AC481465B719AD29AC4C8C11ECCC2789AE2F953297220EB27807C1BAB9
 ```
 
 설치 프로그램은 사용자 단위로 설치하고 시작 메뉴 바로 가기를 만들며 관리자 권한이 필요 없습니다.
@@ -180,7 +180,7 @@ python -m cleanyourphone_app --version
 
 앱 테스트 스위트는 연결 가드, 시리얼 고정, `documented` 프로필 확인, 배치당 하나 적용, 백업
 게이팅, 되돌리기, 피드백 페이로드, 피드백 동의, UI 문구를 다룹니다. 공개된 `0.2.3` 테스트 결과는
-**526개 통과, 6개 건너뜀**입니다.
+**533개 통과, 6개 건너뜀**입니다.
 
 ## 저장소 구조
 
@@ -194,7 +194,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 앱을 빌드하고 스모크 테스트한 뒤 설치 프로그램을 컴파일합니다. |
 | `packaging/installer.iss` | 사용자별 Inno Setup 설치 프로그램. |
 | `docs/superpowers/` | 과거 설계 및 구현 계획. |
-| `tests/` | Pytest 스위트. `0.2.3`에서 526개 통과, 6개 건너뜀. |
+| `tests/` | Pytest 스위트. `0.2.3`에서 533개 통과, 6개 건너뜀. |
 
 ## 제한 사항
 

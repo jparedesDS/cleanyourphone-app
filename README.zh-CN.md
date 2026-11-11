@@ -81,7 +81,7 @@
 已发布的 `v0.2.3` 安装包 SHA-256：
 
 ```text
-B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
+2830F4AC481465B719AD29AC4C8C11ECCC2789AE2F953297220EB27807C1BAB9
 ```
 
 安装程序按用户安装，会创建开始菜单快捷方式，不需要管理员权限。安装位置为 `%LOCALAPPDATA%\Programs\CleanYourPhone`。
@@ -138,7 +138,7 @@ python -m pytest -q
 python -m cleanyourphone_app --version
 ```
 
-应用测试套件覆盖连接防护、序列号绑定、`documented` 机型配置确认、每批只执行一个应用包、备份前置校验、撤销、反馈 payload、反馈同意和 UI 文案。已发布的 `0.2.3` 测试结果为 **526 通过，6 跳过**。
+应用测试套件覆盖连接防护、序列号绑定、`documented` 机型配置确认、每批只执行一个应用包、备份前置校验、撤销、反馈 payload、反馈同意和 UI 文案。已发布的 `0.2.3` 测试结果为 **533 通过，6 跳过**。
 
 ## 仓库结构
 
@@ -152,7 +152,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 构建应用、冒烟测试并编译安装程序。 |
 | `packaging/installer.iss` | 按用户安装的 Inno Setup 安装程序。 |
 | `docs/superpowers/` | 历史设计与实现计划。 |
-| `tests/` | Pytest 测试套件；在 `0.2.3` 上 526 通过，6 跳过。 |
+| `tests/` | Pytest 测试套件；在 `0.2.3` 上 533 通过，6 跳过。 |
 
 ## 限制
 

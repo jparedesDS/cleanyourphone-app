@@ -106,7 +106,7 @@ local.
 SHA-256 del instalador publicado de `v0.2.3`:
 
 ```text
-B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
+2830F4AC481465B719AD29AC4C8C11ECCC2789AE2F953297220EB27807C1BAB9
 ```
 
 El instalador es por usuario, crea un acceso directo en el menú Inicio y no necesita permisos de
@@ -183,7 +183,7 @@ python -m cleanyourphone_app --version
 La suite de la app cubre las protecciones de conexión, la fijación del serial, la confirmación del
 perfil documentado, la aplicación de uno por lote, el bloqueo sin backup, la vuelta atrás, los
 payloads de feedback, el consentimiento del feedback y los textos de la UI. El resultado publicado de
-la suite `0.2.3` es **526 superados, 6 omitidos**.
+la suite `0.2.3` es **533 superados, 6 omitidos**.
 
 ## Mapa del repositorio
 
@@ -197,7 +197,7 @@ la suite `0.2.3` es **526 superados, 6 omitidos**.
 | `scripts/build-app.ps1` | Compila la app, le hace un smoke test y compila el instalador. |
 | `packaging/installer.iss` | Instalador de Inno Setup por usuario. |
 | `docs/superpowers/` | Diseño histórico y plan de implementación. |
-| `tests/` | Suite de pytest; 526 superados, 6 omitidos en `0.2.3`. |
+| `tests/` | Suite de pytest; 533 superados, 6 omitidos en `0.2.3`. |
 
 ## Limitaciones
 
