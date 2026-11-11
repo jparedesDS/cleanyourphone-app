@@ -46,7 +46,7 @@ camino sencillo para los móviles que puede verificar.
 
 ## Estado
 
-`v0.2.0` es una Early MVP, solo para Windows 10/11 x64 y **sin firma de código**. Se probó de
+`v0.2.1` es una Early MVP, solo para Windows 10/11 x64 y **sin firma de código**. Se probó de
 principio a fin en un **OnePlus 6T (Android 11)**: conectar, comprobar, backup, revisar, desactivar un
 paquete, verificar, terminar y deshacer.
 
@@ -94,11 +94,11 @@ los paquetes pueden cambiar según región, operadora o actualización.
 
 ## Instalar
 
-Descarga `CleanYourPhone-Setup-0.2.0.exe` desde
+Descarga `CleanYourPhone-Setup-0.2.1.exe` desde
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) o compílalo en
 local.
 
-SHA-256 del instalador publicado de `v0.2.0`:
+SHA-256 del instalador publicado de `v0.2.1`:
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -151,7 +151,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 El script:
 
-1. clona el tag fijado de la CLI (`v0.3.2`);
+1. clona el tag fijado de la CLI (`v0.3.3`);
 2. congela la CLI como sidecar onedir;
 3. prepara los 156 perfiles;
 4. congela la app de PySide6;
@@ -161,7 +161,7 @@ El script:
 Salidas:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (app portable onedir)
-- `dist/CleanYourPhone-Setup-0.2.0.exe` (instalador)
+- `dist/CleanYourPhone-Setup-0.2.1.exe` (instalador)
 
 Define `CLEANYOURPHONE_CLI` con el sidecar congelado y ejecuta
 `python -m pytest tests/test_cli_contract.py` para incluir el test de contrato con el sidecar real.
@@ -177,7 +177,7 @@ python -m cleanyourphone_app --version
 La suite de la app cubre las protecciones de conexión, la fijación del serial, la confirmación del
 perfil documentado, la aplicación de uno por lote, el bloqueo sin backup, la vuelta atrás, los
 payloads de feedback, el consentimiento del feedback y los textos de la UI. El resultado publicado de
-la suite `0.2.0` es **520 superados, 1 omitido**.
+la suite `0.2.1` es **520 superados, 1 omitido**.
 
 ## Mapa del repositorio
 
@@ -191,7 +191,7 @@ la suite `0.2.0` es **520 superados, 1 omitido**.
 | `scripts/build-app.ps1` | Compila la app, le hace un smoke test y compila el instalador. |
 | `packaging/installer.iss` | Instalador de Inno Setup por usuario. |
 | `docs/superpowers/` | Diseño histórico y plan de implementación. |
-| `tests/` | Suite de pytest; 520 superados, 1 omitido en `0.2.0`. |
+| `tests/` | Suite de pytest; 520 superados, 1 omitido en `0.2.1`. |
 
 ## Limitaciones
 

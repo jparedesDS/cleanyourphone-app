@@ -496,7 +496,7 @@ def test_restore_from_backup_omits_yes_when_not_confirmed(client, fake_log):
 
 
 def test_version_returns_the_sidecar_banner(client, fake_log):
-    assert client.version() == "CleanYourPhone 0.3.2"
+    assert client.version() == "CleanYourPhone 0.3.3"
     assert fake_log.last_args() == ["--version"]
 
 

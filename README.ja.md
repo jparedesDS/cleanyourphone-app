@@ -40,7 +40,7 @@
 
 ## 状態
 
-`v0.2.0` は Early MVP で、Windows 10/11 x64 専用、**コード署名なし**です。**OnePlus 6T（Android 11）**で最初から最後までテストしました。接続、確認、バックアップ、レビュー、1 パッケージの無効化、検証、完了、元に戻す、まで。
+`v0.2.1` は Early MVP で、Windows 10/11 x64 専用、**コード署名なし**です。**OnePlus 6T（Android 11）**で最初から最後までテストしました。接続、確認、バックアップ、レビュー、1 パッケージの無効化、検証、完了、元に戻す、まで。
 
 アプリは意図的に推測を拒みます。次のように一致したときだけ先へ進みます:
 
@@ -75,9 +75,9 @@
 
 ## インストール
 
-[releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) から `CleanYourPhone-Setup-0.2.0.exe` をダウンロードするか、ローカルでビルドします。
+[releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) から `CleanYourPhone-Setup-0.2.1.exe` をダウンロードするか、ローカルでビルドします。
 
-公開されている `v0.2.0` インストーラーの SHA-256:
+公開されている `v0.2.1` インストーラーの SHA-256:
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -115,7 +115,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 スクリプトの内容:
 
-1. 固定された CLI タグ（`v0.3.2`）をクローンします。
+1. 固定された CLI タグ（`v0.3.3`）をクローンします。
 2. CLI を onedir サイドカーとしてフリーズします。
 3. 156 個のプロファイルを配置します。
 4. PySide6 アプリをフリーズします。
@@ -125,7 +125,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 出力:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe`（ポータブル onedir アプリ）
-- `dist/CleanYourPhone-Setup-0.2.0.exe`（インストーラー）
+- `dist/CleanYourPhone-Setup-0.2.1.exe`（インストーラー）
 
 `CLEANYOURPHONE_CLI` にフリーズしたサイドカーを設定し、`python -m pytest tests/test_cli_contract.py` を実行すると、実際のサイドカーとのコントラクトテストが含まれます。
 
@@ -137,7 +137,7 @@ python -m pytest -q
 python -m cleanyourphone_app --version
 ```
 
-アプリのスイートは、接続ガード、シリアル固定、documented プロファイルの確認、1 バッチ 1 パッケージ適用、バックアップなしのブロック、元に戻す操作、フィードバックのペイロード、フィードバックの同意、UI 文言をカバーします。公開されている `0.2.0` のスイート結果は **520 件パス、1 件スキップ**です。
+アプリのスイートは、接続ガード、シリアル固定、documented プロファイルの確認、1 バッチ 1 パッケージ適用、バックアップなしのブロック、元に戻す操作、フィードバックのペイロード、フィードバックの同意、UI 文言をカバーします。公開されている `0.2.1` のスイート結果は **520 件パス、1 件スキップ**です。
 
 ## リポジトリ構成
 
@@ -151,7 +151,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | アプリをビルドし、スモークテストし、インストーラーをコンパイルする。 |
 | `packaging/installer.iss` | ユーザー単位の Inno Setup インストーラー。 |
 | `docs/superpowers/` | 過去の設計と実装計画。 |
-| `tests/` | pytest スイート。`0.2.0` では 520 件パス、1 件スキップ。 |
+| `tests/` | pytest スイート。`0.2.1` では 520 件パス、1 件スキップ。 |
 
 ## 制限事項
 

@@ -46,7 +46,7 @@ app est le chemin simple pour les téléphones qu’elle peut vérifier.
 
 ## État
 
-`v0.2.0` est un Early MVP, Windows 10/11 x64 uniquement, et **non signé**. La version a été testée de
+`v0.2.1` est un Early MVP, Windows 10/11 x64 uniquement, et **non signé**. La version a été testée de
 bout en bout sur un **OnePlus 6T (Android 11)** : connexion, vérification, sauvegarde, relecture,
 désactivation d’un paquet, vérification, fin et annulation.
 
@@ -95,11 +95,11 @@ appareil réel ; les paquets peuvent varier selon la région, l’opérateur ou 
 
 ## Installation
 
-Téléchargez `CleanYourPhone-Setup-0.2.0.exe` depuis
+Téléchargez `CleanYourPhone-Setup-0.2.1.exe` depuis
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), ou compilez-le
 localement.
 
-SHA-256 de l’installateur publié `v0.2.0` :
+SHA-256 de l’installateur publié `v0.2.1` :
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -155,7 +155,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 Le script :
 
-1. clone le tag CLI épinglé (`v0.3.2`) ;
+1. clone le tag CLI épinglé (`v0.3.3`) ;
 2. fige le CLI en sidecar onedir ;
 3. prépare les 156 profils ;
 4. fige l’app PySide6 ;
@@ -165,7 +165,7 @@ Le script :
 Sorties :
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (app onedir portable)
-- `dist/CleanYourPhone-Setup-0.2.0.exe` (installateur)
+- `dist/CleanYourPhone-Setup-0.2.1.exe` (installateur)
 
 Définissez `CLEANYOURPHONE_CLI` sur le sidecar figé et exécutez
 `python -m pytest tests/test_cli_contract.py` pour inclure le test de contrat avec le vrai sidecar.
@@ -181,7 +181,7 @@ python -m cleanyourphone_app --version
 La suite de l’app couvre les garde-fous de connexion, l’épinglage du numéro de série, la confirmation
 des profils `documented`, l’application d’un paquet par lot, le blocage en l’absence de sauvegarde,
 l’annulation, les payloads de retour, le consentement au retour et les textes de l’UI. Le résultat
-publié pour `0.2.0` est **520 tests réussis, 1 ignoré**.
+publié pour `0.2.1` est **520 tests réussis, 1 ignoré**.
 
 ## Carte du dépôt
 
@@ -195,7 +195,7 @@ publié pour `0.2.0` est **520 tests réussis, 1 ignoré**.
 | `scripts/build-app.ps1` | Construit l’app, fait le smoke test et compile l’installateur. |
 | `packaging/installer.iss` | Installateur Inno Setup par utilisateur. |
 | `docs/superpowers/` | Conception historique et plan d’implémentation. |
-| `tests/` | Suite Pytest ; 520 tests réussis, 1 ignoré sur `0.2.0`. |
+| `tests/` | Suite Pytest ; 520 tests réussis, 1 ignoré sur `0.2.1`. |
 
 ## Limites
 

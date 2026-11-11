@@ -1,4 +1,4 @@
-; CleanYourPhone 0.2.0 - per-user installer (no administrator required).
+; CleanYourPhone 0.2.1 - per-user installer (no administrator required).
 ;
 ; The app, sidecar and profiles are installed under
 ; %LOCALAPPDATA%\Programs\CleanYourPhone. Build it with:
@@ -7,9 +7,9 @@
 ;   ISCC.exe packaging\installer.iss
 
 #define MyAppName "CleanYourPhone"
-#define MyAppVersion "0.2.0"
+#define MyAppVersion "0.2.1"
 #define MyAppPublisher "jparedesDS"
-#define MyAppURL "https://jparedesds.github.io/cleanyourphone-web/"
+#define MyAppURL "https://cleanyourphone.org/"
 #define MyAppExeName "CleanYourPhone.exe"
 
 [Setup]
@@ -21,13 +21,13 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-VersionInfoVersion=0.2.0.0
+VersionInfoVersion=0.2.1.0
 DefaultDirName={localappdata}\Programs\CleanYourPhone
 DefaultGroupName=CleanYourPhone
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=..\dist
-OutputBaseFilename=CleanYourPhone-Setup-0.2.0
+OutputBaseFilename=CleanYourPhone-Setup-0.2.1
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

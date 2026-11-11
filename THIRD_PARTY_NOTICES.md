@@ -1,7 +1,7 @@
 # Third-party notices
 
-CleanYourPhone 0.2.0 is built from several open-source components. This file is
-installed next to the application by `CleanYourPhone-Setup-0.2.0.exe` and is
+CleanYourPhone 0.2.1 is built from several open-source components. This file is
+installed next to the application by `CleanYourPhone-Setup-0.2.1.exe` and is
 also present in the source repository.
 
 ## CleanYourPhone app
@@ -11,7 +11,7 @@ License. See [LICENSE](LICENSE). Copyright (c) 2026 jparedesDS.
 
 ## CleanYourPhone CLI (sidecar)
 
-The app ships a frozen build of the CleanYourPhone CLI at tag `v0.3.2` from
+The app ships a frozen build of the CleanYourPhone CLI at tag `v0.3.3` from
 <https://github.com/jparedesDS/cleanyourphone>. The CLI is licensed under the
 MIT License, copyright (c) 2026 jparedesDS.
 

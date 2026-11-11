@@ -45,7 +45,7 @@
 
 ## 狀態
 
-`v0.2.0` 是 Early MVP，僅支援 Windows 10/11 x64，而且**未經程式碼簽署**。已在
+`v0.2.1` 是 Early MVP，僅支援 Windows 10/11 x64，而且**未經程式碼簽署**。已在
 **OnePlus 6T（Android 11）** 上完成端對端測試：連接、檢查、備份、檢視、停用一個套件、
 驗證、完成與復原。
 
@@ -95,9 +95,9 @@
 
 從
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) 下載
-`CleanYourPhone-Setup-0.2.0.exe`，或在本機建置。
+`CleanYourPhone-Setup-0.2.1.exe`，或在本機建置。
 
-已發佈 `v0.2.0` 安裝程式的 SHA-256：
+已發佈 `v0.2.1` 安裝程式的 SHA-256：
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -147,7 +147,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 指令碼會：
 
-1. clone 固定的 CLI 標籤（`v0.3.2`）；
+1. clone 固定的 CLI 標籤（`v0.3.3`）；
 2. 將 CLI 凍結為 onedir sidecar；
 3. 準備 156 個設定檔；
 4. 凍結 PySide6 應用程式；
@@ -157,7 +157,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 輸出：
 
 - `dist/CleanYourPhone/CleanYourPhone.exe`（可攜式 onedir 應用程式）
-- `dist/CleanYourPhone-Setup-0.2.0.exe`（安裝程式）
+- `dist/CleanYourPhone-Setup-0.2.1.exe`（安裝程式）
 
 將 `CLEANYOURPHONE_CLI` 設為凍結的 sidecar，並執行
 `python -m pytest tests/test_cli_contract.py`，以納入真實 sidecar 的契約測試。
@@ -171,7 +171,7 @@ python -m cleanyourphone_app --version
 ```
 
 應用程式的測試套件涵蓋連線防護、序號綁定、documented 設定檔確認、每批只套用一個、備份
-把關、復原、意見回饋內容、意見回饋同意與 UI 文案。已發佈的 `0.2.0` 測試套件結果為
+把關、復原、意見回饋內容、意見回饋同意與 UI 文案。已發佈的 `0.2.1` 測試套件結果為
 **520 通過、1 略過**。
 
 ## 儲存庫導覽
@@ -186,7 +186,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 建置應用程式、進行 smoke test 並編譯安裝程式。 |
 | `packaging/installer.iss` | 每位使用者的 Inno Setup 安裝程式。 |
 | `docs/superpowers/` | 歷史設計與實作計畫。 |
-| `tests/` | Pytest 測試套件；`0.2.0` 上 520 通過、1 略過。 |
+| `tests/` | Pytest 測試套件；`0.2.1` 上 520 通過、1 略過。 |
 
 ## 限制
 

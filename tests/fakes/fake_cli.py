@@ -250,7 +250,7 @@ def main(argv: list[str]) -> int:
         print(stderr_text, file=sys.stderr)
 
     if "--version" in argv:
-        print("CleanYourPhone 0.3.2")
+        print("CleanYourPhone 0.3.3")
         return _exit_code("VERSION")
 
     args = [arg for arg in argv if arg != "--json"]

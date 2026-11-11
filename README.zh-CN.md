@@ -40,7 +40,7 @@
 
 ## 状态
 
-`v0.2.0` 是早期 MVP，仅支持 Windows 10/11 x64，并且**未进行代码签名**。它已在一部 **OnePlus 6T（Android 11）** 上完成端到端测试：连接、检查、备份、审阅、停用一个应用包、验证、完成和撤销。
+`v0.2.1` 是早期 MVP，仅支持 Windows 10/11 x64，并且**未进行代码签名**。它已在一部 **OnePlus 6T（Android 11）** 上完成端到端测试：连接、检查、备份、审阅、停用一个应用包、验证、完成和撤销。
 
 应用刻意不做猜测。只有能够匹配以下情况时才会继续：
 
@@ -75,9 +75,9 @@
 
 ## 安装
 
-从 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) 下载 `CleanYourPhone-Setup-0.2.0.exe`，或在本地构建。
+从 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) 下载 `CleanYourPhone-Setup-0.2.1.exe`，或在本地构建。
 
-已发布的 `v0.2.0` 安装包 SHA-256：
+已发布的 `v0.2.1` 安装包 SHA-256：
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -115,7 +115,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 该脚本会：
 
-1. 克隆固定版本的 CLI 标签（`v0.3.2`）；
+1. 克隆固定版本的 CLI 标签（`v0.3.3`）；
 2. 把 CLI 冻结为 onedir sidecar；
 3. 暂存 156 个机型配置；
 4. 冻结 PySide6 应用；
@@ -125,7 +125,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 输出：
 
 - `dist/CleanYourPhone/CleanYourPhone.exe`（便携式 onedir 应用）
-- `dist/CleanYourPhone-Setup-0.2.0.exe`（安装程序）
+- `dist/CleanYourPhone-Setup-0.2.1.exe`（安装程序）
 
 将 `CLEANYOURPHONE_CLI` 设为冻结后的 sidecar，并运行 `python -m pytest tests/test_cli_contract.py`，以包含真实 sidecar 的契约测试。
 
@@ -137,7 +137,7 @@ python -m pytest -q
 python -m cleanyourphone_app --version
 ```
 
-应用测试套件覆盖连接防护、序列号绑定、`documented` 机型配置确认、每批只执行一个应用包、备份前置校验、撤销、反馈 payload、反馈同意和 UI 文案。已发布的 `0.2.0` 测试结果为 **520 通过，1 跳过**。
+应用测试套件覆盖连接防护、序列号绑定、`documented` 机型配置确认、每批只执行一个应用包、备份前置校验、撤销、反馈 payload、反馈同意和 UI 文案。已发布的 `0.2.1` 测试结果为 **520 通过，1 跳过**。
 
 ## 仓库结构
 
@@ -151,7 +151,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 构建应用、冒烟测试并编译安装程序。 |
 | `packaging/installer.iss` | 按用户安装的 Inno Setup 安装程序。 |
 | `docs/superpowers/` | 历史设计与实现计划。 |
-| `tests/` | Pytest 测试套件；在 `0.2.0` 上 520 通过，1 跳过。 |
+| `tests/` | Pytest 测试套件；在 `0.2.1` 上 520 通过，1 跳过。 |
 
 ## 限制
 

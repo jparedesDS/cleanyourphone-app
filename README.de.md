@@ -46,7 +46,7 @@ Hauptprodukt; diese App ist der einfache Weg für die Smartphones, die sie verif
 
 ## Status
 
-`v0.2.0` ist eine frühe MVP-Version, nur für Windows 10/11 x64 und **nicht code-signiert**. Sie wurde
+`v0.2.1` ist eine frühe MVP-Version, nur für Windows 10/11 x64 und **nicht code-signiert**. Sie wurde
 Ende-zu-Ende auf einem **OnePlus 6T (Android 11)** getestet: verbinden, prüfen, Backup, Review, ein
 Paket deaktivieren, verifizieren, fertig und rückgängig.
 
@@ -95,11 +95,11 @@ Gerät; Pakete können je nach Region, Mobilfunkanbieter oder Update abweichen.
 
 ## Installieren
 
-Lade `CleanYourPhone-Setup-0.2.0.exe` von
+Lade `CleanYourPhone-Setup-0.2.1.exe` von
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) herunter oder baue
 die App lokal.
 
-SHA-256 des veröffentlichten Installers von `v0.2.0`:
+SHA-256 des veröffentlichten Installers von `v0.2.1`:
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -156,7 +156,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 Das Skript:
 
-1. klont den gepinnten CLI-Tag (`v0.3.2`);
+1. klont den gepinnten CLI-Tag (`v0.3.3`);
 2. friert die CLI als Onedir-Sidecar ein;
 3. stellt die 156 Profile bereit;
 4. friert die PySide6-App ein;
@@ -166,7 +166,7 @@ Das Skript:
 Ausgaben:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (portable Onedir-App)
-- `dist/CleanYourPhone-Setup-0.2.0.exe` (Installer)
+- `dist/CleanYourPhone-Setup-0.2.1.exe` (Installer)
 
 Setze `CLEANYOURPHONE_CLI` auf das eingefrorene Sidecar und führe
 `python -m pytest tests/test_cli_contract.py` aus, um den Vertragstest mit dem echten Sidecar
@@ -183,7 +183,7 @@ python -m cleanyourphone_app --version
 Die App-Suite deckt die Verbindungs-Guards, das Pinning der Seriennummer, die Bestätigung von
 `documented`-Profilen, das Anwenden eines Pakets pro Batch, die Backup-Sperre, das
 Rückgängigmachen, Feedback-Payloads, die Feedback-Zustimmung und die UI-Texte ab. Das veröffentlichte
-Ergebnis der `0.2.0`-Suite ist **520 bestanden, 1 übersprungen**.
+Ergebnis der `0.2.1`-Suite ist **520 bestanden, 1 übersprungen**.
 
 ## Repository-Übersicht
 
@@ -197,7 +197,7 @@ Ergebnis der `0.2.0`-Suite ist **520 bestanden, 1 übersprungen**.
 | `scripts/build-app.ps1` | Baut die App, macht einen Smoke-Test und kompiliert den Installer. |
 | `packaging/installer.iss` | Inno-Setup-Installer pro Benutzer. |
 | `docs/superpowers/` | Historisches Design und Implementierungsplan. |
-| `tests/` | Pytest-Suite; 520 bestanden, 1 übersprungen bei `0.2.0`. |
+| `tests/` | Pytest-Suite; 520 bestanden, 1 übersprungen bei `0.2.1`. |
 
 ## Einschränkungen
 

@@ -46,7 +46,7 @@ celulares que ele consegue verificar.
 
 ## Status
 
-`v0.2.0` é um Early MVP, só para Windows 10/11 x64 e **sem assinatura de código**. Foi testada de ponta
+`v0.2.1` é um Early MVP, só para Windows 10/11 x64 e **sem assinatura de código**. Foi testada de ponta
 a ponta em um **OnePlus 6T (Android 11)**: conectar, conferir, backup, revisar, desativar um pacote,
 verificar, concluir e desfazer.
 
@@ -94,11 +94,11 @@ pacotes podem variar por região, operadora ou atualização.
 
 ## Instalação
 
-Baixe o `CleanYourPhone-Setup-0.2.0.exe` em
+Baixe o `CleanYourPhone-Setup-0.2.1.exe` em
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), ou compile
 localmente.
 
-SHA-256 do instalador publicado da `v0.2.0`:
+SHA-256 do instalador publicado da `v0.2.1`:
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -151,7 +151,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 O script:
 
-1. clona a tag fixada da CLI (`v0.3.2`);
+1. clona a tag fixada da CLI (`v0.3.3`);
 2. congela a CLI como sidecar onedir;
 3. prepara os 156 perfis;
 4. congela o app PySide6;
@@ -161,7 +161,7 @@ O script:
 Saídas:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (app portátil onedir)
-- `dist/CleanYourPhone-Setup-0.2.0.exe` (instalador)
+- `dist/CleanYourPhone-Setup-0.2.1.exe` (instalador)
 
 Defina `CLEANYOURPHONE_CLI` para o sidecar congelado e rode
 `python -m pytest tests/test_cli_contract.py` para incluir o teste de contrato com o sidecar real.
@@ -176,7 +176,7 @@ python -m cleanyourphone_app --version
 
 A suíte do app cobre as proteções de conexão, a fixação de serial, a confirmação de perfil documentado,
 a aplicação de um por lote, o bloqueio por backup, o desfazer, os payloads de feedback, o consentimento
-de feedback e os textos da interface. O resultado publicado da suíte `0.2.0` é **520 passed, 1 skipped**.
+de feedback e os textos da interface. O resultado publicado da suíte `0.2.1` é **520 passed, 1 skipped**.
 
 ## Mapa do repositório
 
@@ -190,7 +190,7 @@ de feedback e os textos da interface. O resultado publicado da suíte `0.2.0` é
 | `scripts/build-app.ps1` | Compila o app, faz smoke test e compila o instalador. |
 | `packaging/installer.iss` | Instalador Inno Setup por usuário. |
 | `docs/superpowers/` | Design histórico e plano de implementação. |
-| `tests/` | Suíte Pytest; 520 passando, 1 ignorado em `0.2.0`. |
+| `tests/` | Suíte Pytest; 520 passando, 1 ignorado em `0.2.1`. |
 
 ## Limitações
 

@@ -46,7 +46,7 @@ phones it can verify.
 
 ## Status
 
-`v0.2.0` is an Early MVP, Windows 10/11 x64 only, and **not code-signed**. It was tested end to end
+`v0.2.1` is an Early MVP, Windows 10/11 x64 only, and **not code-signed**. It was tested end to end
 on a **OnePlus 6T (Android 11)**: connect, check, backup, review, disable one package, verify, done
 and undo.
 
@@ -94,11 +94,11 @@ can differ by region, carrier or update.
 
 ## Install
 
-Download `CleanYourPhone-Setup-0.2.0.exe` from
+Download `CleanYourPhone-Setup-0.2.1.exe` from
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), or build it
 locally.
 
-SHA-256 of the published `v0.2.0` installer:
+SHA-256 of the published `v0.2.1` installer:
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -149,7 +149,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 The script:
 
-1. clones the pinned CLI tag (`v0.3.2`);
+1. clones the pinned CLI tag (`v0.3.3`);
 2. freezes the CLI as an onedir sidecar;
 3. stages the 156 profiles;
 4. freezes the PySide6 app;
@@ -159,7 +159,7 @@ The script:
 Outputs:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (portable onedir app)
-- `dist/CleanYourPhone-Setup-0.2.0.exe` (installer)
+- `dist/CleanYourPhone-Setup-0.2.1.exe` (installer)
 
 Set `CLEANYOURPHONE_CLI` to the frozen sidecar and run
 `python -m pytest tests/test_cli_contract.py` to include the real-sidecar contract test.
@@ -174,7 +174,7 @@ python -m cleanyourphone_app --version
 
 The app suite covers the connection guards, serial pinning, documented-profile acknowledgement,
 one-per-batch apply, backup gating, undo, feedback payloads, feedback consent and UI copy. The
-published `0.2.0` suite result is **520 passed, 1 skipped**.
+published `0.2.1` suite result is **520 passed, 1 skipped**.
 
 ## Repository map
 
@@ -188,7 +188,7 @@ published `0.2.0` suite result is **520 passed, 1 skipped**.
 | `scripts/build-app.ps1` | Builds the app, smoke-tests it and compiles the installer. |
 | `packaging/installer.iss` | Per-user Inno Setup installer. |
 | `docs/superpowers/` | Historical design and implementation plan. |
-| `tests/` | Pytest suite; 520 passing, 1 skipped on `0.2.0`. |
+| `tests/` | Pytest suite; 520 passing, 1 skipped on `0.2.1`. |
 
 ## Limitations
 

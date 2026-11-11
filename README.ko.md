@@ -46,7 +46,7 @@
 
 ## 상태
 
-`v0.2.0`은 Early MVP이며 Windows 10/11 x64 전용이고 **코드 서명이 없습니다**.
+`v0.2.1`은 Early MVP이며 Windows 10/11 x64 전용이고 **코드 서명이 없습니다**.
 **OnePlus 6T(Android 11)**에서 처음부터 끝까지 테스트했습니다: 연결, 확인, 백업, 검토, 패키지
 하나 비활성화, 검증, 완료, 되돌리기.
 
@@ -95,11 +95,11 @@
 
 ## 설치
 
-`CleanYourPhone-Setup-0.2.0.exe`를
+`CleanYourPhone-Setup-0.2.1.exe`를
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest)에서
 다운로드하거나 로컬에서 빌드하세요.
 
-공개된 `v0.2.0` 설치 프로그램의 SHA-256:
+공개된 `v0.2.1` 설치 프로그램의 SHA-256:
 
 ```text
 B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
@@ -150,7 +150,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 스크립트가 하는 일:
 
-1. 고정된 CLI 태그(`v0.3.2`)를 클론합니다.
+1. 고정된 CLI 태그(`v0.3.3`)를 클론합니다.
 2. CLI를 onedir sidecar로 동결합니다.
 3. 156개 프로필을 준비합니다.
 4. PySide6 앱을 동결합니다.
@@ -160,7 +160,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 출력물:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (포터블 onedir 앱)
-- `dist/CleanYourPhone-Setup-0.2.0.exe` (설치 프로그램)
+- `dist/CleanYourPhone-Setup-0.2.1.exe` (설치 프로그램)
 
 `CLEANYOURPHONE_CLI`를 동결된 sidecar로 설정하고
 `python -m pytest tests/test_cli_contract.py`를 실행하면 실제 sidecar 계약 테스트가 포함됩니다.
@@ -174,7 +174,7 @@ python -m cleanyourphone_app --version
 ```
 
 앱 테스트 스위트는 연결 가드, 시리얼 고정, `documented` 프로필 확인, 배치당 하나 적용, 백업
-게이팅, 되돌리기, 피드백 페이로드, 피드백 동의, UI 문구를 다룹니다. 공개된 `0.2.0` 테스트 결과는
+게이팅, 되돌리기, 피드백 페이로드, 피드백 동의, UI 문구를 다룹니다. 공개된 `0.2.1` 테스트 결과는
 **520개 통과, 1개 건너뜀**입니다.
 
 ## 저장소 구조
@@ -189,7 +189,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 앱을 빌드하고 스모크 테스트한 뒤 설치 프로그램을 컴파일합니다. |
 | `packaging/installer.iss` | 사용자별 Inno Setup 설치 프로그램. |
 | `docs/superpowers/` | 과거 설계 및 구현 계획. |
-| `tests/` | Pytest 스위트. `0.2.0`에서 520개 통과, 1개 건너뜀. |
+| `tests/` | Pytest 스위트. `0.2.1`에서 520개 통과, 1개 건너뜀. |
 
 ## 제한 사항
 

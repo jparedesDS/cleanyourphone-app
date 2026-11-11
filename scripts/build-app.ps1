@@ -6,7 +6,7 @@
     1. scripts/build-cli-sidecar.ps1 stages resources/cli and resources/profiles.
     2. PyInstaller builds dist/CleanYourPhone from packaging/cleanyourphone-app.spec.
     3. Both executables are smoke-tested.
-    4. Inno Setup builds dist/CleanYourPhone-Setup-0.2.0.exe.
+    4. Inno Setup builds dist/CleanYourPhone-Setup-0.2.1.exe.
 
     Inno Setup 6 is required for the installer. If ISCC.exe is not installed the
     script fails with an explicit message after the app itself has been built;
@@ -42,7 +42,7 @@ $AppDist = Join-Path $Dist "CleanYourPhone"
 $AppExe = Join-Path $AppDist "CleanYourPhone.exe"
 $SidecarExe = Join-Path $AppDist "resources\cli\cleanyourphone.exe"
 $DistProfiles = Join-Path $AppDist "resources\profiles"
-$SetupExe = Join-Path $Dist "CleanYourPhone-Setup-0.2.0.exe"
+$SetupExe = Join-Path $Dist "CleanYourPhone-Setup-0.2.1.exe"
 
 function Invoke-Native {
     param(
@@ -146,8 +146,8 @@ try {
     $env:CLEANYOURPHONE_PROFILES = $DistProfiles
 
     $sidecarVersion = (& $SidecarExe "--version" | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or $sidecarVersion -ne "CleanYourPhone 0.3.2") {
-        throw "Sidecar smoke test failed: expected 'CleanYourPhone 0.3.2', got '$sidecarVersion' (exit $LASTEXITCODE)."
+    if ($LASTEXITCODE -ne 0 -or $sidecarVersion -ne "CleanYourPhone 0.3.3") {
+        throw "Sidecar smoke test failed: expected 'CleanYourPhone 0.3.3', got '$sidecarVersion' (exit $LASTEXITCODE)."
     }
 
     $sidecarValidation = (& $SidecarExe "validate" | Out-String).Trim()
@@ -174,8 +174,8 @@ $appProcess = Start-Process -FilePath $AppExe `
     -PassThru `
     -RedirectStandardOutput $appVersionFile
 $appVersion = (Get-Content -LiteralPath $appVersionFile -Raw).Trim()
-if ($appProcess.ExitCode -ne 0 -or $appVersion -ne "CleanYourPhone app 0.2.0") {
-    throw "App smoke test failed: expected 'CleanYourPhone app 0.2.0', got '$appVersion' (exit $($appProcess.ExitCode))."
+if ($appProcess.ExitCode -ne 0 -or $appVersion -ne "CleanYourPhone app 0.2.1") {
+    throw "App smoke test failed: expected 'CleanYourPhone app 0.2.1', got '$appVersion' (exit $($appProcess.ExitCode))."
 }
 
 Write-Host "Smoke tests passed: $sidecarVersion / $appVersion"
