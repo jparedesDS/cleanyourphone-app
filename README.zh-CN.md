@@ -40,7 +40,7 @@
 
 ## 状态
 
-`v0.2.1` 是早期 MVP，仅支持 Windows 10/11 x64，并且**未进行代码签名**。它已在一部 **OnePlus 6T（Android 11）** 上完成端到端测试：连接、检查、备份、审阅、停用一个应用包、验证、完成和撤销。
+`v0.2.2` 是早期 MVP，仅支持 Windows 10/11 x64，并且**未进行代码签名**。它已在一部 **OnePlus 6T（Android 11）** 上完成端到端测试：连接、检查、备份、审阅、停用一个应用包、验证、完成和撤销。
 
 应用刻意不做猜测。只有能够匹配以下情况时才会继续：
 
@@ -68,6 +68,7 @@
 - **可选的私人 DNS。** 提供 AdGuard、AdGuard Family、Control D 和 Mullvad 预设，以及一项不会声称已拦截 YouTube 广告的检查。见 [docs/ADS.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/ADS.md)。
 - **可选的前后基准测试。** 在本地统计可用 RAM、进程数和应用包数量。结果近似，不代表因果关系；不保存序列号或构建指纹。
 - **可选反馈。** 经过明确同意后，可以把一份预填且可编辑的清单发送给维护者。没有自动遥测。见 [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md)。
+- **更新检查。** 应用最多每六小时向 GitHub 查询一次最新版本。如果有更新的版本，横幅会打开发布页面。应用绝不会自行下载或安装更新，也不会发送账户、手机或使用数据。
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="CleanYourPhone 连接界面，显示 Wi-Fi 和 USB 说明以及连接指南链接" width="760">
@@ -75,9 +76,9 @@
 
 ## 安装
 
-从 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) 下载 `CleanYourPhone-Setup-0.2.1.exe`，或在本地构建。
+从 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) 下载 `CleanYourPhone-Setup-0.2.2.exe`，或在本地构建。
 
-已发布的 `v0.2.1` 安装包 SHA-256：
+已发布的 `v0.2.2` 安装包 SHA-256：
 
 ```text
 E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
@@ -103,7 +104,7 @@ ADB 不随应用捆绑或再分发。应用会查找已有的 Platform-Tools 安
 - **受保护的应用包和角色会被拒绝。** 电话功能、Google Play 服务、WebView、permission controller、紧急警报、当前拨号器、短信、桌面和键盘都不能被停用。
 - **每个会话只用一种连接方式。** 会话中途在 Wi-Fi/USB 之间切换会被拒绝；请开始新会话。
 - **遇到未知情况就停止。** 受管理设备、多用户、Android < 8、TV 以及没有匹配机型配置的手机都不会被更改。
-- **没有自动遥测。** 应用是本地工具。它唯一的网络访问是：可选下载 Google Platform-Tools，以及在使用者按下“发送”后提交反馈表单。
+- **没有自动遥测。** 应用是本地工具。它唯一的网络访问是：可选下载 Google Platform-Tools、GitHub 更新检查，以及在使用者按下“发送”后提交反馈表单。
 
 ## 构建
 
@@ -115,9 +116,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 该脚本会：
 
-1. 克隆固定版本的 CLI 标签（`v0.3.3`）；
+1. 克隆固定版本的 CLI 标签（`v0.3.4`）；
 2. 把 CLI 冻结为 onedir sidecar；
-3. 暂存 156 个机型配置；
+3. 暂存 157 个机型配置；
 4. 冻结 PySide6 应用；
 5. 对两个可执行文件做冒烟测试；
 6. 编译按用户安装的安装程序。
@@ -125,7 +126,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 输出：
 
 - `dist/CleanYourPhone/CleanYourPhone.exe`（便携式 onedir 应用）
-- `dist/CleanYourPhone-Setup-0.2.1.exe`（安装程序）
+- `dist/CleanYourPhone-Setup-0.2.2.exe`（安装程序）
 
 将 `CLEANYOURPHONE_CLI` 设为冻结后的 sidecar，并运行 `python -m pytest tests/test_cli_contract.py`，以包含真实 sidecar 的契约测试。
 
@@ -137,7 +138,7 @@ python -m pytest -q
 python -m cleanyourphone_app --version
 ```
 
-应用测试套件覆盖连接防护、序列号绑定、`documented` 机型配置确认、每批只执行一个应用包、备份前置校验、撤销、反馈 payload、反馈同意和 UI 文案。已发布的 `0.2.1` 测试结果为 **520 通过，1 跳过**。
+应用测试套件覆盖连接防护、序列号绑定、`documented` 机型配置确认、每批只执行一个应用包、备份前置校验、撤销、反馈 payload、反馈同意和 UI 文案。已发布的 `0.2.2` 测试结果为 **520 通过，1 跳过**。
 
 ## 仓库结构
 
@@ -151,7 +152,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 构建应用、冒烟测试并编译安装程序。 |
 | `packaging/installer.iss` | 按用户安装的 Inno Setup 安装程序。 |
 | `docs/superpowers/` | 历史设计与实现计划。 |
-| `tests/` | Pytest 测试套件；在 `0.2.1` 上 520 通过，1 跳过。 |
+| `tests/` | Pytest 测试套件；在 `0.2.2` 上 520 通过，1 跳过。 |
 
 ## 限制
 

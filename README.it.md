@@ -46,7 +46,7 @@ semplice per i telefoni che riesce a verificare.
 
 ## Stato
 
-`v0.2.1` è una Early MVP, solo per Windows 10/11 x64 e **non firmata**. È stata testata da capo a
+`v0.2.2` è una Early MVP, solo per Windows 10/11 x64 e **non firmata**. È stata testata da capo a
 fondo su un **OnePlus 6T (Android 11)**: connessione, controllo, backup, revisione, disattivazione di
 un pacchetto, verifica, completamento e annullamento.
 
@@ -88,6 +88,9 @@ dispositivo reale; i pacchetti possono variare per regione, operatore o aggiorna
 - **Feedback opzionale.** Una checklist precompilata e modificabile può essere inviata al maintainer
   dopo consenso esplicito. Nessuna telemetria automatica. Vedi
   [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md).
+- **Controllo degli aggiornamenti.** Al massimo una volta ogni sei ore l'app chiede a GitHub l'ultima
+  release. Se esiste una versione più recente, un banner apre la pagina della release. L'app non
+  scarica né installa mai un aggiornamento da sola e non invia dati di account, telefono o utilizzo.
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="Schermata di connessione di CleanYourPhone con istruzioni per Wi-Fi e USB e il link alla guida alla connessione" width="760">
@@ -95,11 +98,11 @@ dispositivo reale; i pacchetti possono variare per regione, operatore o aggiorna
 
 ## Installazione
 
-Scarica `CleanYourPhone-Setup-0.2.1.exe` da
+Scarica `CleanYourPhone-Setup-0.2.2.exe` da
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), oppure compila
 l'app in locale.
 
-SHA-256 dell'installer pubblicato di `v0.2.1`:
+SHA-256 dell'installer pubblicato di `v0.2.2`:
 
 ```text
 E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
@@ -141,7 +144,8 @@ L'app è una GUI sopra la stessa CLI; le protezioni restano le stesse:
 - **Fermati su ciò che non conosci.** Dispositivi gestiti, utenti multipli, Android < 8, TV e telefoni
   senza un profilo corrispondente non vengono modificati.
 - **Nessuna telemetria automatica.** L'app è locale. Le sue uniche chiamate di rete sono il download
-  opzionale di Platform-Tools da Google e il modulo di feedback dopo che la persona preme Invia.
+  opzionale di Platform-Tools da Google, il controllo degli aggiornamenti su GitHub e il modulo di
+  feedback dopo che la persona preme Invia.
 
 ## Compilazione
 
@@ -154,9 +158,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 Lo script:
 
-1. clona il tag fissato della CLI (`v0.3.3`);
+1. clona il tag fissato della CLI (`v0.3.4`);
 2. congela la CLI come sidecar onedir;
-3. prepara i 156 profili;
+3. prepara i 157 profili;
 4. congela l'app PySide6;
 5. esegue uno smoke test di entrambi gli eseguibili;
 6. compila l'installer per utente.
@@ -164,7 +168,7 @@ Lo script:
 Risultati:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (app portabile onedir)
-- `dist/CleanYourPhone-Setup-0.2.1.exe` (installer)
+- `dist/CleanYourPhone-Setup-0.2.2.exe` (installer)
 
 Imposta `CLEANYOURPHONE_CLI` sul sidecar congelato ed esegui
 `python -m pytest tests/test_cli_contract.py` per includere il test di contratto con il sidecar reale.
@@ -180,7 +184,7 @@ python -m cleanyourphone_app --version
 La suite dell'app copre le protezioni della connessione, il pinning del seriale, la conferma del
 profilo `documented`, l'applicazione uno per lotto, il blocco senza backup, l'annullamento, i payload
 di feedback, il consenso al feedback e i testi dell'interfaccia. Il risultato pubblicato della suite
-`0.2.1` è **520 superati, 1 saltato**.
+`0.2.2` è **520 superati, 1 saltato**.
 
 ## Mappa del repository
 
@@ -194,7 +198,7 @@ di feedback, il consenso al feedback e i testi dell'interfaccia. Il risultato pu
 | `scripts/build-app.ps1` | Compila l'app, le fa uno smoke test e compila l'installer. |
 | `packaging/installer.iss` | Installer Inno Setup per utente. |
 | `docs/superpowers/` | Design storico e piano di implementazione. |
-| `tests/` | Suite pytest; 520 superati, 1 saltato su `0.2.1`. |
+| `tests/` | Suite pytest; 520 superati, 1 saltato su `0.2.2`. |
 
 ## Limitazioni
 

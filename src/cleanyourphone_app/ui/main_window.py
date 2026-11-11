@@ -9,11 +9,12 @@ language switch is part of the fixed header, so it is visible on every screen.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QCloseEvent, QIcon
+from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtGui import QCloseEvent, QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -30,6 +31,7 @@ from cleanyourphone_app.domain.apply import ApplySummary
 from cleanyourphone_app.domain.session import SessionError
 from cleanyourphone_app.services.adb import AdbError, AdbInfo, DeviceEntry
 from cleanyourphone_app.services.logging import LOGGER_NAME
+from cleanyourphone_app.services.updates import UpdateInfo
 from cleanyourphone_app.ui.dialogs import FeedbackDialog
 from cleanyourphone_app.ui.pages.apply import ApplyPage
 from cleanyourphone_app.ui.pages.backup import BackupPage
@@ -40,6 +42,8 @@ from cleanyourphone_app.ui.pages.done import DonePage
 from cleanyourphone_app.ui.pages.review import ReviewPage
 from cleanyourphone_app.ui.pages.setup import SetupPage
 from cleanyourphone_app.ui.pages.welcome import WelcomePage
+from cleanyourphone_app.ui.workers import BackgroundCall
+from cleanyourphone_app.version import __version__
 
 if TYPE_CHECKING:
     from cleanyourphone_app.ui.app import AppContext
@@ -143,11 +147,19 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(900, 640)
         self.resize(980, 700)
 
+        self._pending_update: UpdateInfo | None = None
+        self._update_check_manual = False
+        self._update_call = BackgroundCall(self)
+        self._update_call.succeeded.connect(self._update_succeeded)
+        self._update_call.failed.connect(self._update_failed)
+        self._update_call.finished.connect(self._update_finished)
+
         self._build_ui()
         self._register_default_pages()
         self._load_theme()
         self.retranslate()
         self.show_page("welcome")
+        QTimer.singleShot(1500, self._maybe_check_updates)
 
     # ------------------------------------------------------------------ build
 
@@ -213,6 +225,15 @@ class MainWindow(QMainWindow):
             self.language_buttons[code] = button
             switch_layout.addWidget(button)
 
+        self.update_button = QPushButton(header)
+        self.update_button.setObjectName("update_button")
+        self.update_button.setProperty("role", "language")
+        self.update_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_button.setAutoDefault(False)
+        self.update_button.clicked.connect(
+            lambda checked=False: self._check_updates(manual=True)
+        )
+
         self.feedback_button = QPushButton(header)
         self.feedback_button.setObjectName("feedback_button")
         self.feedback_button.setProperty("role", "language")
@@ -223,9 +244,40 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(self.logo_label)
         header_layout.addLayout(brand_layout)
         header_layout.addStretch(1)
+        header_layout.addWidget(self.update_button)
         header_layout.addWidget(self.feedback_button)
         header_layout.addWidget(self.language_switch)
         root_layout.addWidget(header)
+
+        self.update_banner = QFrame(central)
+        self.update_banner.setObjectName("UpdateBanner")
+        self.update_banner.hide()
+        update_layout = QHBoxLayout(self.update_banner)
+        update_layout.setContentsMargins(28, 8, 28, 8)
+        update_layout.setSpacing(10)
+
+        self.update_banner_label = QLabel(self.update_banner)
+        self.update_banner_label.setProperty("role", "body")
+        self.update_banner_label.setWordWrap(True)
+
+        self.update_open_button = QPushButton(self.update_banner)
+        self.update_open_button.setObjectName("update_open_button")
+        self.update_open_button.setProperty("primary", True)
+        self.update_open_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_open_button.setAutoDefault(False)
+        self.update_open_button.clicked.connect(self._open_update)
+
+        self.update_later_button = QPushButton(self.update_banner)
+        self.update_later_button.setObjectName("update_later_button")
+        self.update_later_button.setProperty("role", "language")
+        self.update_later_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_later_button.setAutoDefault(False)
+        self.update_later_button.clicked.connect(self._dismiss_update)
+
+        update_layout.addWidget(self.update_banner_label, 1)
+        update_layout.addWidget(self.update_open_button)
+        update_layout.addWidget(self.update_later_button)
+        root_layout.addWidget(self.update_banner)
 
         step_bar = QFrame(central)
         step_bar.setObjectName("StepBar")
@@ -306,6 +358,74 @@ class MainWindow(QMainWindow):
         """Open the opt-in feedback form; nothing is sent until Send."""
         dialog = FeedbackDialog(self.context, self)
         dialog.exec()
+
+    # ------------------------------------------------------------- updates
+
+    def _maybe_check_updates(self) -> None:
+        """Check at most once every six hours, without blocking the window."""
+        if self._update_call.active or self._pending_update is not None:
+            return
+        now = int(time.time())
+        if now - self.context.settings.last_update_check < 6 * 60 * 60:
+            return
+        self._check_updates(manual=False)
+
+    def _check_updates(self, *, manual: bool) -> None:
+        if self._update_call.active:
+            return
+        self._update_check_manual = manual
+        self.context.settings.last_update_check = int(time.time())
+        try:
+            self.context.settings.save()
+        except OSError:
+            logging.getLogger(LOGGER_NAME).warning(
+                "could not save the last update check"
+            )
+        self.update_button.setEnabled(False)
+        self.update_button.setText(self.context.translator.tr("update.checking"))
+        started = self._update_call.start(
+            lambda: self.context.update_checker(__version__)
+        )
+        if not started:
+            self._update_finished()
+            if manual:
+                self.statusBar().showMessage(
+                    self.context.translator.tr("update.failed"), 5000
+                )
+
+    def _update_succeeded(self, result: object) -> None:
+        if not isinstance(result, UpdateInfo):
+            if self._update_check_manual:
+                self.statusBar().showMessage(
+                    self.context.translator.tr("update.up_to_date"), 5000
+                )
+            return
+        self._pending_update = result
+        tr = self.context.translator.tr
+        self.update_banner_label.setText(
+            tr("update.available").format(version=result.version)
+        )
+        self.update_open_button.setText(tr("update.open"))
+        self.update_later_button.setText(tr("update.later"))
+        self.update_banner.show()
+
+    def _update_failed(self, error: object) -> None:
+        logging.getLogger(LOGGER_NAME).warning("update check failed: %s", error)
+        if self._update_check_manual:
+            self.statusBar().showMessage(
+                self.context.translator.tr("update.failed"), 6000
+            )
+
+    def _update_finished(self) -> None:
+        self.update_button.setEnabled(True)
+        self.update_button.setText(self.context.translator.tr("update.check"))
+
+    def _open_update(self, checked: bool = False) -> None:
+        if self._pending_update is not None:
+            QDesktopServices.openUrl(QUrl(self._pending_update.url))
+
+    def _dismiss_update(self, checked: bool = False) -> None:
+        self.update_banner.hide()
 
     def start_flow(self) -> str:
         """Choose setup, check or welcome from the ADB and device state.
@@ -476,6 +596,7 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
 
+        self._update_call.shutdown(2000)
         for page in (
             self.setup_page,
             self.connect_page,
@@ -503,6 +624,17 @@ class MainWindow(QMainWindow):
         self.tagline_label.setText(tr("app.tagline"))
         self.feedback_button.setText(tr("feedback.open"))
         self.feedback_button.setAccessibleName(tr("feedback.open"))
+        self.update_button.setText(
+            tr("update.checking") if self._update_call.active else tr("update.check")
+        )
+        self.update_button.setToolTip(tr("update.check"))
+        self.update_button.setAccessibleName(tr("update.check"))
+        self.update_open_button.setText(tr("update.open"))
+        self.update_later_button.setText(tr("update.later"))
+        if self._pending_update is not None:
+            self.update_banner_label.setText(
+                tr("update.available").format(version=self._pending_update.version)
+            )
         self.language_label.setText(tr("common.language"))
         self.language_switch.setAccessibleName(tr("common.language"))
 

@@ -71,19 +71,19 @@ def client(base_env: dict[str, str]) -> CliClient:
 
 
 def test_serial_is_prepended_to_device_commands(client, fake_log):
-    client.set_serial("192.0.2.10:5555")
+    client.set_serial("192.0.2.20:5555")
     client.probe()
     assert fake_log.last_args() == [
         "--serial",
-        "192.0.2.10:5555",
+        "192.0.2.20:5555",
         "--json",
         "probe",
     ]
 
 
 def test_serial_can_be_cleared_and_is_validated(client):
-    client.set_serial("192.0.2.10:5555")
-    assert client.serial == "192.0.2.10:5555"
+    client.set_serial("192.0.2.20:5555")
+    assert client.serial == "192.0.2.20:5555"
     client.set_serial(None)
     assert client.serial is None
     with pytest.raises(ValueError):
@@ -496,7 +496,7 @@ def test_restore_from_backup_omits_yes_when_not_confirmed(client, fake_log):
 
 
 def test_version_returns_the_sidecar_banner(client, fake_log):
-    assert client.version() == "CleanYourPhone 0.3.3"
+    assert client.version() == "CleanYourPhone 0.3.4"
     assert fake_log.last_args() == ["--version"]
 
 

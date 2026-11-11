@@ -15,7 +15,7 @@
     sidecar call with CREATE_NO_WINDOW so no console window flashes.
 
 .PARAMETER CliVersion
-    Git tag of the CLI to build. The app ships v0.3.3.
+    Git tag of the CLI to build. The app ships v0.3.4.
 
 .PARAMETER Python
     Python executable used for pip, venv and PyInstaller. Defaults to "python".
@@ -25,7 +25,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$CliVersion = "v0.3.3",
+    [string]$CliVersion = "v0.3.4",
     [string]$RepoUrl = "https://github.com/jparedesDS/cleanyourphone",
     [string]$Python = "python",
     [switch]$Force
@@ -206,16 +206,16 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "The frozen sidecar --version failed with exit code $LASTEXITCODE."
     }
-    if ($version -ne "CleanYourPhone 0.3.3") {
-        throw "Expected sidecar version 'CleanYourPhone 0.3.3', got '$version'."
+    if ($version -ne "CleanYourPhone 0.3.4") {
+        throw "Expected sidecar version 'CleanYourPhone 0.3.4', got '$version'."
     }
 
     $validation = (& $FrozenExe "validate" | Out-String).Trim()
     if ($LASTEXITCODE -ne 0) {
         throw "The frozen sidecar validate failed with exit code $LASTEXITCODE.`n$validation"
     }
-    if ($validation -notmatch 'OK: 156 profile\(s\) valid') {
-        throw "Expected validate to report 156 profiles, got:`n$validation"
+    if ($validation -notmatch 'OK: 157 profile\(s\) valid') {
+        throw "Expected validate to report 157 profiles, got:`n$validation"
     }
 }
 finally {

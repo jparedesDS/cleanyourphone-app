@@ -45,7 +45,7 @@
 
 ## 狀態
 
-`v0.2.1` 是 Early MVP，僅支援 Windows 10/11 x64，而且**未經程式碼簽署**。已在
+`v0.2.2` 是 Early MVP，僅支援 Windows 10/11 x64，而且**未經程式碼簽署**。已在
 **OnePlus 6T（Android 11）** 上完成端對端測試：連接、檢查、備份、檢視、停用一個套件、
 驗證、完成與復原。
 
@@ -86,6 +86,8 @@
 - **選用意見回饋。** 經明確同意後，可將預先填入且可編輯的檢查清單送給維護者。沒有自動
   遙測。請見
   [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md)。
+- **更新檢查。** 應用程式最多每六小時向 GitHub 查詢一次最新的發行版本。如果有更新的版本，
+  橫幅會開啟發行頁面。應用程式絕不會自行下載或安裝更新，也不會傳送帳戶、手機或使用資料。
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="CleanYourPhone 應用程式的連接畫面，顯示 Wi-Fi 與 USB 操作說明，以及連線指南連結" width="760">
@@ -95,9 +97,9 @@
 
 從
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) 下載
-`CleanYourPhone-Setup-0.2.1.exe`，或在本機建置。
+`CleanYourPhone-Setup-0.2.2.exe`，或在本機建置。
 
-已發佈 `v0.2.1` 安裝程式的 SHA-256：
+已發佈 `v0.2.2` 安裝程式的 SHA-256：
 
 ```text
 E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
@@ -134,7 +136,7 @@ ADB 未隨附或重新散布。應用程式會尋找現有的 Platform-Tools 安
 - **遇到未知就停止。** 受管理裝置、多重使用者、Android < 8、TV，以及沒有相符設定檔的手機，
   都不會被變更。
 - **沒有自動遙測。** 應用程式在本機執行。它唯一的網路呼叫，是選用的 Google Platform-Tools
-  下載，以及使用者按下送出後的意見回饋表單。
+  下載、GitHub 更新檢查，以及使用者按下送出後的意見回饋表單。
 
 ## 建置
 
@@ -147,9 +149,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 指令碼會：
 
-1. clone 固定的 CLI 標籤（`v0.3.3`）；
+1. clone 固定的 CLI 標籤（`v0.3.4`）；
 2. 將 CLI 凍結為 onedir sidecar；
-3. 準備 156 個設定檔；
+3. 準備 157 個設定檔；
 4. 凍結 PySide6 應用程式；
 5. 對兩個執行檔進行 smoke test；
 6. 編譯每位使用者的安裝程式。
@@ -157,7 +159,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 輸出：
 
 - `dist/CleanYourPhone/CleanYourPhone.exe`（可攜式 onedir 應用程式）
-- `dist/CleanYourPhone-Setup-0.2.1.exe`（安裝程式）
+- `dist/CleanYourPhone-Setup-0.2.2.exe`（安裝程式）
 
 將 `CLEANYOURPHONE_CLI` 設為凍結的 sidecar，並執行
 `python -m pytest tests/test_cli_contract.py`，以納入真實 sidecar 的契約測試。
@@ -171,7 +173,7 @@ python -m cleanyourphone_app --version
 ```
 
 應用程式的測試套件涵蓋連線防護、序號綁定、documented 設定檔確認、每批只套用一個、備份
-把關、復原、意見回饋內容、意見回饋同意與 UI 文案。已發佈的 `0.2.1` 測試套件結果為
+把關、復原、意見回饋內容、意見回饋同意與 UI 文案。已發佈的 `0.2.2` 測試套件結果為
 **520 通過、1 略過**。
 
 ## 儲存庫導覽
@@ -186,7 +188,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 建置應用程式、進行 smoke test 並編譯安裝程式。 |
 | `packaging/installer.iss` | 每位使用者的 Inno Setup 安裝程式。 |
 | `docs/superpowers/` | 歷史設計與實作計畫。 |
-| `tests/` | Pytest 測試套件；`0.2.1` 上 520 通過、1 略過。 |
+| `tests/` | Pytest 測試套件；`0.2.2` 上 520 通過、1 略過。 |
 
 ## 限制
 

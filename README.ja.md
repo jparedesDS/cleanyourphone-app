@@ -40,7 +40,7 @@
 
 ## 状態
 
-`v0.2.1` は Early MVP で、Windows 10/11 x64 専用、**コード署名なし**です。**OnePlus 6T（Android 11）**で最初から最後までテストしました。接続、確認、バックアップ、レビュー、1 パッケージの無効化、検証、完了、元に戻す、まで。
+`v0.2.2` は Early MVP で、Windows 10/11 x64 専用、**コード署名なし**です。**OnePlus 6T（Android 11）**で最初から最後までテストしました。接続、確認、バックアップ、レビュー、1 パッケージの無効化、検証、完了、元に戻す、まで。
 
 アプリは意図的に推測を拒みます。次のように一致したときだけ先へ進みます:
 
@@ -68,6 +68,7 @@
 - **オプションのプライベート DNS。** AdGuard、AdGuard Family、Control D、Mullvad のプリセットに加え、YouTube の広告がブロックされたとは主張しない確認。詳細は [docs/ADS.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/ADS.md)。
 - **オプションの前後ベンチマーク。** ローカルの空き RAM、プロセス数、パッケージ数。概算で因果関係はなく、シリアルもフィンガープリントも保存しません。
 - **オプションのフィードバック。** 入力済みで編集可能なチェックリストを、明示的な同意後にメンテナーへ送れます。自動テレメトリーはありません。詳細は [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md)。
+- **アップデート確認。** 6 時間に最大 1 回、アプリが GitHub に最新リリースを問い合わせます。新しいバージョンがある場合は、バナーからリリースページを開けます。アプリがアップデートを自動でダウンロードしたりインストールしたりすることはなく、アカウント、スマホ、利用状況のデータも送信しません。
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="CleanYourPhone の接続画面。Wi-Fi と USB の手順、接続ガイドへのリンクを表示" width="760">
@@ -75,9 +76,9 @@
 
 ## インストール
 
-[releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) から `CleanYourPhone-Setup-0.2.1.exe` をダウンロードするか、ローカルでビルドします。
+[releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) から `CleanYourPhone-Setup-0.2.2.exe` をダウンロードするか、ローカルでビルドします。
 
-公開されている `v0.2.1` インストーラーの SHA-256:
+公開されている `v0.2.2` インストーラーの SHA-256:
 
 ```text
 E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
@@ -103,7 +104,7 @@ ADB は同梱も再配布もされません。アプリは既存の Platform-Too
 - **保護パッケージとロールは拒否。** 電話、Play Services、WebView、permission controller、緊急アラート、現在のダイヤラー、SMS、Home、キーボードは無効化できません。
 - **セッションごとに 1 つのトランスポート。** セッションの途中で Wi-Fi/USB を切り替えることは拒否されます。新しいセッションを開始してください。
 - **不明なら停止。** 管理された端末、複数ユーザー、Android 8 未満、TV、一致するプロファイルのないスマホは変更しません。
-- **自動テレメトリーなし。** アプリはローカルです。ネットワーク呼び出しは、オプションの Google Platform-Tools ダウンロードと、本人が送信を押した後のフィードバックフォームだけです。
+- **自動テレメトリーなし。** アプリはローカルです。ネットワーク呼び出しは、オプションの Google Platform-Tools ダウンロード、GitHub のアップデート確認、本人が送信を押した後のフィードバックフォームだけです。
 
 ## ビルド
 
@@ -115,9 +116,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 スクリプトの内容:
 
-1. 固定された CLI タグ（`v0.3.3`）をクローンします。
+1. 固定された CLI タグ（`v0.3.4`）をクローンします。
 2. CLI を onedir サイドカーとしてフリーズします。
-3. 156 個のプロファイルを配置します。
+3. 157 個のプロファイルを配置します。
 4. PySide6 アプリをフリーズします。
 5. 両方の実行ファイルをスモークテストします。
 6. ユーザー単位のインストーラーをコンパイルします。
@@ -125,7 +126,7 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 出力:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe`（ポータブル onedir アプリ）
-- `dist/CleanYourPhone-Setup-0.2.1.exe`（インストーラー）
+- `dist/CleanYourPhone-Setup-0.2.2.exe`（インストーラー）
 
 `CLEANYOURPHONE_CLI` にフリーズしたサイドカーを設定し、`python -m pytest tests/test_cli_contract.py` を実行すると、実際のサイドカーとのコントラクトテストが含まれます。
 
@@ -137,7 +138,7 @@ python -m pytest -q
 python -m cleanyourphone_app --version
 ```
 
-アプリのスイートは、接続ガード、シリアル固定、documented プロファイルの確認、1 バッチ 1 パッケージ適用、バックアップなしのブロック、元に戻す操作、フィードバックのペイロード、フィードバックの同意、UI 文言をカバーします。公開されている `0.2.1` のスイート結果は **520 件パス、1 件スキップ**です。
+アプリのスイートは、接続ガード、シリアル固定、documented プロファイルの確認、1 バッチ 1 パッケージ適用、バックアップなしのブロック、元に戻す操作、フィードバックのペイロード、フィードバックの同意、UI 文言をカバーします。公開されている `0.2.2` のスイート結果は **520 件パス、1 件スキップ**です。
 
 ## リポジトリ構成
 
@@ -151,7 +152,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | アプリをビルドし、スモークテストし、インストーラーをコンパイルする。 |
 | `packaging/installer.iss` | ユーザー単位の Inno Setup インストーラー。 |
 | `docs/superpowers/` | 過去の設計と実装計画。 |
-| `tests/` | pytest スイート。`0.2.1` では 520 件パス、1 件スキップ。 |
+| `tests/` | pytest スイート。`0.2.2` では 520 件パス、1 件スキップ。 |
 
 ## 制限事項
 

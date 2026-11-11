@@ -8,10 +8,12 @@ def test_settings_round_trip(tmp_path):
     settings = Settings.load(tmp_path / "settings.json")
     settings.language = "es"
     settings.adb_path = "C:/tools/adb.exe"
+    settings.last_update_check = 1_700_000_000
     settings.save()
     loaded = Settings.load(tmp_path / "settings.json")
     assert loaded.language == "es"
     assert loaded.adb_path == "C:/tools/adb.exe"
+    assert loaded.last_update_check == 1_700_000_000
 
 
 def test_default_path_uses_local_app_data(monkeypatch, tmp_path):
@@ -38,6 +40,7 @@ def test_save_creates_the_parent_directory(tmp_path):
     assert json.loads(path.read_text(encoding="utf-8")) == {
         "language": "",
         "adb_path": None,
+        "last_update_check": 0,
     }
 
 
@@ -80,3 +83,14 @@ def test_non_object_json_returns_defaults(tmp_path):
     settings = Settings.load(path)
     assert settings.language == ""
     assert settings.adb_path is None
+    assert settings.last_update_check == 0
+
+
+def test_invalid_update_timestamp_falls_back_to_zero(tmp_path):
+    path = tmp_path / "settings.json"
+    path.write_text(
+        json.dumps({"language": "en", "last_update_check": "not a date"}),
+        encoding="utf-8",
+    )
+    settings = Settings.load(path)
+    assert settings.last_update_check == 0

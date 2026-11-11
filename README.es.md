@@ -46,7 +46,7 @@ camino sencillo para los móviles que puede verificar.
 
 ## Estado
 
-`v0.2.1` es una Early MVP, solo para Windows 10/11 x64 y **sin firma de código**. Se probó de
+`v0.2.2` es una Early MVP, solo para Windows 10/11 x64 y **sin firma de código**. Se probó de
 principio a fin en un **OnePlus 6T (Android 11)**: conectar, comprobar, backup, revisar, desactivar un
 paquete, verificar, terminar y deshacer.
 
@@ -87,6 +87,9 @@ los paquetes pueden cambiar según región, operadora o actualización.
 - **Feedback opcional.** Un checklist relleno y editable que se puede enviar al maintainer después de
   un consentimiento explícito. Sin telemetría automática. Ver
   [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md).
+- **Comprobación de actualizaciones.** Como máximo una vez cada seis horas, la app pregunta a GitHub
+  por la última release. Si hay una versión nueva, un aviso abre la página de la release. La app
+  nunca descarga ni instala una actualización por su cuenta y no envía datos de cuenta, móvil ni uso.
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="Pantalla de conexión de CleanYourPhone con instrucciones para Wi-Fi y USB y el enlace a la guía de conexión" width="760">
@@ -94,11 +97,11 @@ los paquetes pueden cambiar según región, operadora o actualización.
 
 ## Instalar
 
-Descarga `CleanYourPhone-Setup-0.2.1.exe` desde
+Descarga `CleanYourPhone-Setup-0.2.2.exe` desde
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest) o compílalo en
 local.
 
-SHA-256 del instalador publicado de `v0.2.1`:
+SHA-256 del instalador publicado de `v0.2.2`:
 
 ```text
 E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
@@ -138,7 +141,8 @@ La app es una GUI sobre la misma CLI; las protecciones no se mueven:
 - **Para ante lo desconocido.** Móviles gestionados, varios usuarios, Android < 8, TVs y móviles sin
   un perfil que coincida no se tocan.
 - **Sin telemetría automática.** La app es local. Sus únicas llamadas de red son la descarga opcional
-  de Platform-Tools de Google y el formulario de feedback después de que la persona pulse Enviar.
+  de Platform-Tools de Google, la comprobación de actualizaciones en GitHub y el formulario de
+  feedback después de que la persona pulse Enviar.
 
 ## Compilar
 
@@ -151,9 +155,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 El script:
 
-1. clona el tag fijado de la CLI (`v0.3.3`);
+1. clona el tag fijado de la CLI (`v0.3.4`);
 2. congela la CLI como sidecar onedir;
-3. prepara los 156 perfiles;
+3. prepara los 157 perfiles;
 4. congela la app de PySide6;
 5. hace un smoke test de los dos ejecutables;
 6. compila el instalador por usuario.
@@ -161,7 +165,7 @@ El script:
 Salidas:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (app portable onedir)
-- `dist/CleanYourPhone-Setup-0.2.1.exe` (instalador)
+- `dist/CleanYourPhone-Setup-0.2.2.exe` (instalador)
 
 Define `CLEANYOURPHONE_CLI` con el sidecar congelado y ejecuta
 `python -m pytest tests/test_cli_contract.py` para incluir el test de contrato con el sidecar real.
@@ -177,7 +181,7 @@ python -m cleanyourphone_app --version
 La suite de la app cubre las protecciones de conexión, la fijación del serial, la confirmación del
 perfil documentado, la aplicación de uno por lote, el bloqueo sin backup, la vuelta atrás, los
 payloads de feedback, el consentimiento del feedback y los textos de la UI. El resultado publicado de
-la suite `0.2.1` es **520 superados, 1 omitido**.
+la suite `0.2.2` es **520 superados, 1 omitido**.
 
 ## Mapa del repositorio
 
@@ -191,7 +195,7 @@ la suite `0.2.1` es **520 superados, 1 omitido**.
 | `scripts/build-app.ps1` | Compila la app, le hace un smoke test y compila el instalador. |
 | `packaging/installer.iss` | Instalador de Inno Setup por usuario. |
 | `docs/superpowers/` | Diseño histórico y plan de implementación. |
-| `tests/` | Suite de pytest; 520 superados, 1 omitido en `0.2.1`. |
+| `tests/` | Suite de pytest; 520 superados, 1 omitido en `0.2.2`. |
 
 ## Limitaciones
 

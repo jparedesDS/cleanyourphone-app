@@ -46,6 +46,16 @@ def _normalize_adb_path(value: object) -> str | None:
     return checked or None
 
 
+def _normalize_timestamp(value: object) -> int:
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, (int, float)):
+        return max(0, int(value))
+    if isinstance(value, str) and value.strip().isdigit():
+        return max(0, int(value.strip()))
+    return 0
+
+
 @dataclass
 class Settings:
     """The small set of preferences the MVP persists.
@@ -57,12 +67,14 @@ class Settings:
     path: Path | None = field(default_factory=default_path)
     language: str = ""
     adb_path: str | None = None
+    last_update_check: int = 0
 
     def __post_init__(self) -> None:
         if self.path is not None:
             self.path = Path(self.path)
         self.language = _normalize_language(self.language)
         self.adb_path = _normalize_adb_path(self.adb_path)
+        self.last_update_check = _normalize_timestamp(self.last_update_check)
 
     @classmethod
     def load(cls, path: str | Path | None = None) -> Settings:
@@ -82,12 +94,15 @@ class Settings:
             path=target,
             language=_normalize_language(payload.get("language")),
             adb_path=_normalize_adb_path(payload.get("adb_path")),
+            last_update_check=_normalize_timestamp(
+                payload.get("last_update_check")
+            ),
         )
 
     @classmethod
     def in_memory(cls, language: str = "en", adb_path: str | None = None) -> Settings:
         """Build settings that never touch the disk, for tests and previews."""
-        return cls(path=None, language=language, adb_path=adb_path)
+        return cls(path=None, language=language, adb_path=adb_path, last_update_check=0)
 
     @staticmethod
     def default_path(local_app_data: str | Path | None = None) -> Path:
@@ -100,7 +115,12 @@ class Settings:
 
         self.language = _normalize_language(self.language)
         self.adb_path = _normalize_adb_path(self.adb_path)
-        payload = {"language": self.language, "adb_path": self.adb_path}
+        self.last_update_check = _normalize_timestamp(self.last_update_check)
+        payload = {
+            "language": self.language,
+            "adb_path": self.adb_path,
+            "last_update_check": self.last_update_check,
+        }
         text = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
         self.path.parent.mkdir(parents=True, exist_ok=True)

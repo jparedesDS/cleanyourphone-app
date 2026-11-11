@@ -119,6 +119,21 @@ QFrame#StepBar {
     border-bottom: 1px solid #1B1C21;
 }
 
+QFrame#UpdateBanner {
+    background-color: #2A2C31;
+    border-bottom: 1px solid #A78BFA;
+}
+
+QFrame#UpdateBanner QLabel {
+    color: #F3F1EC;
+    font-size: 13px;
+}
+
+QPushButton#update_button {
+    color: #A78BFA;
+    font-weight: 600;
+}
+
 QWidget#LanguageSwitch {
     background-color: transparent;
 }

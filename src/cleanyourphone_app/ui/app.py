@@ -32,6 +32,10 @@ from cleanyourphone_app.services.logging import (
     default_log_path,
 )
 from cleanyourphone_app.services.settings import Settings
+from cleanyourphone_app.services.updates import (
+    UpdateInfo,
+    check_for_update,
+)
 from cleanyourphone_app.version import __version__
 
 from .main_window import MainWindow
@@ -103,6 +107,7 @@ class AppContext:
     adb_path: str | None = None
     adb_info: AdbInfo | None = None
     device_lister: DeviceLister = list_devices
+    update_checker: Callable[[str], UpdateInfo | None] = check_for_update
     last_probe: ProbeData | None = None
 
     def __post_init__(self) -> None:
@@ -166,6 +171,7 @@ class AppContext:
             "adb_path": None,
             "adb_info": None,
             "device_lister": lambda _info: [],
+            "update_checker": lambda _version: None,
         }
         valid = {field.name for field in fields(cls)}
         unknown = set(overrides) - valid
@@ -193,6 +199,7 @@ def create_context(settings: Settings | None = None) -> AppContext:
         settings=loaded,
         downloads=PlatformToolsDownloader(),
         adb_path=loaded.adb_path,
+        update_checker=check_for_update,
     )
 
 

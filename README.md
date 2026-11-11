@@ -46,7 +46,7 @@ phones it can verify.
 
 ## Status
 
-`v0.2.1` is an Early MVP, Windows 10/11 x64 only, and **not code-signed**. It was tested end to end
+`v0.2.2` is an Early MVP, Windows 10/11 x64 only, and **not code-signed**. It was tested end to end
 on a **OnePlus 6T (Android 11)**: connect, check, backup, review, disable one package, verify, done
 and undo.
 
@@ -87,6 +87,9 @@ can differ by region, carrier or update.
 - **Optional feedback.** A prefilled, editable checklist can be sent to the maintainer after explicit
   consent. No automatic telemetry. See
   [docs/FEEDBACK.md](https://github.com/jparedesDS/cleanyourphone/blob/main/docs/FEEDBACK.md).
+- **Update check.** At most once every six hours the app asks GitHub for the latest release. If a
+  newer version exists, a banner opens the release page. The app never downloads or installs an
+  update by itself, and it sends no account, phone or usage data.
 
 <p align="center">
   <img src="docs/images/app-connect.png" alt="CleanYourPhone connect screen with Wi-Fi and USB instructions and the connection guide link" width="760">
@@ -94,11 +97,11 @@ can differ by region, carrier or update.
 
 ## Install
 
-Download `CleanYourPhone-Setup-0.2.1.exe` from
+Download `CleanYourPhone-Setup-0.2.2.exe` from
 [releases/latest](https://github.com/jparedesDS/cleanyourphone-app/releases/latest), or build it
 locally.
 
-SHA-256 of the published `v0.2.1` installer:
+SHA-256 of the published `v0.2.2` installer:
 
 ```text
 E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
@@ -136,7 +139,8 @@ The app is a GUI over the same CLI; the guardrails do not move:
 - **Stop on unknown.** Managed devices, multiple users, Android < 8, TVs and phones without a matching
   profile are not changed.
 - **No automatic telemetry.** The app is local. Its only network calls are the optional Google
-  Platform-Tools download and the feedback form after the person presses Send.
+  Platform-Tools download, the GitHub update check, and the feedback form after the person presses
+  Send.
 
 ## Build
 
@@ -149,9 +153,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build-app.ps1
 
 The script:
 
-1. clones the pinned CLI tag (`v0.3.3`);
+1. clones the pinned CLI tag (`v0.3.4`);
 2. freezes the CLI as an onedir sidecar;
-3. stages the 156 profiles;
+3. stages the 157 profiles;
 4. freezes the PySide6 app;
 5. smoke-tests both executables;
 6. compiles the per-user installer.
@@ -159,7 +163,7 @@ The script:
 Outputs:
 
 - `dist/CleanYourPhone/CleanYourPhone.exe` (portable onedir app)
-- `dist/CleanYourPhone-Setup-0.2.1.exe` (installer)
+- `dist/CleanYourPhone-Setup-0.2.2.exe` (installer)
 
 Set `CLEANYOURPHONE_CLI` to the frozen sidecar and run
 `python -m pytest tests/test_cli_contract.py` to include the real-sidecar contract test.
@@ -174,7 +178,7 @@ python -m cleanyourphone_app --version
 
 The app suite covers the connection guards, serial pinning, documented-profile acknowledgement,
 one-per-batch apply, backup gating, undo, feedback payloads, feedback consent and UI copy. The
-published `0.2.1` suite result is **520 passed, 1 skipped**.
+published `0.2.2` suite result is **520 passed, 1 skipped**.
 
 ## Repository map
 
@@ -188,7 +192,7 @@ published `0.2.1` suite result is **520 passed, 1 skipped**.
 | `scripts/build-app.ps1` | Builds the app, smoke-tests it and compiles the installer. |
 | `packaging/installer.iss` | Per-user Inno Setup installer. |
 | `docs/superpowers/` | Historical design and implementation plan. |
-| `tests/` | Pytest suite; 520 passing, 1 skipped on `0.2.1`. |
+| `tests/` | Pytest suite; 520 passing, 1 skipped on `0.2.2`. |
 
 ## Limitations
 

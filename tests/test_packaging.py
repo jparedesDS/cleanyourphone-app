@@ -28,7 +28,7 @@ DIST = APP_ROOT / "dist"
 APP_EXE = DIST / "CleanYourPhone" / "CleanYourPhone.exe"
 SIDECAR_EXE = DIST / "CleanYourPhone" / "resources" / "cli" / "cleanyourphone.exe"
 BUNDLED_PROFILES = DIST / "CleanYourPhone" / "resources" / "profiles"
-SETUP_EXE = DIST / "CleanYourPhone-Setup-0.2.1.exe"
+SETUP_EXE = DIST / "CleanYourPhone-Setup-0.2.2.exe"
 
 
 def read(path: Path) -> str:
@@ -43,7 +43,7 @@ def read(path: Path) -> str:
 def test_sidecar_build_pins_the_cli_tag_and_builds_a_onedir_exe():
     script = read(SIDECAR_SCRIPT)
     assert "https://github.com/jparedesDS/cleanyourphone" in script
-    assert "v0.3.3" in script
+    assert "v0.3.4" in script
     assert "v0.2.2" not in script
     assert ".build/cli-src" in script
     assert ".build/cli-venv" in script
@@ -52,8 +52,8 @@ def test_sidecar_build_pins_the_cli_tag_and_builds_a_onedir_exe():
     assert "--name" in script and "cleanyourphone" in script
     assert "Lib/site-packages" in script
     assert "profiles" in script
-    assert "CleanYourPhone 0.3.3" in script
-    assert "156" in script
+    assert "CleanYourPhone 0.3.4" in script
+    assert "157" in script
 
 
 def test_app_build_runs_the_sidecar_then_the_installer():
@@ -63,8 +63,8 @@ def test_app_build_runs_the_sidecar_then_the_installer():
     assert "installer.iss" in script
     assert "ISCC" in script
     assert "CleanYourPhone.exe" in script
-    assert "CleanYourPhone 0.3.3" in script
-    assert "CleanYourPhone-Setup-0.2.1.exe" in script
+    assert "CleanYourPhone 0.3.4" in script
+    assert "CleanYourPhone-Setup-0.2.2.exe" in script
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +95,7 @@ def test_installer_is_per_user_and_never_touches_user_data():
     assert "PrivilegesRequired=lowest" in iss
     assert r"{autoprograms}\CleanYourPhone" in iss
     assert "THIRD_PARTY_NOTICES.md" in iss
-    assert "CleanYourPhone-Setup-0.2.1" in iss
+    assert "CleanYourPhone-Setup-0.2.2" in iss
     assert not re.search(r"(?m)^\[UninstallDelete\]", iss)
 
 
@@ -121,11 +121,11 @@ def test_ci_builds_smokes_and_uploads_the_installer():
     assert "build-app.ps1" in workflow
     assert r"dist\CleanYourPhone\resources\cli\cleanyourphone.exe --version" in workflow
     assert r"dist\CleanYourPhone\CleanYourPhone.exe --version" in workflow
-    assert "CleanYourPhone 0.3.3" in workflow
+    assert "CleanYourPhone 0.3.4" in workflow
     assert "CleanYourPhone 0.2.2" not in workflow
     assert "choco install innosetup" in workflow
     assert "actions/upload-artifact" in workflow
-    assert "CleanYourPhone-Setup-0.2.1.exe" in workflow
+    assert "CleanYourPhone-Setup-0.2.2.exe" in workflow
 
 
 # ---------------------------------------------------------------------------
@@ -197,14 +197,14 @@ def test_built_sidecar_reports_the_pinned_version():
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "CleanYourPhone 0.3.3"
+    assert result.stdout.strip() == "CleanYourPhone 0.3.4"
 
 
 @pytest.mark.skipif(
     not SIDECAR_EXE.is_file() or not BUNDLED_PROFILES.is_dir(),
     reason="sidecar and profiles have not been built",
 )
-def test_built_sidecar_validates_156_profiles():
+def test_built_sidecar_validates_157_profiles():
     result = subprocess.run(
         [str(SIDECAR_EXE), "validate"],
         capture_output=True,
@@ -213,7 +213,7 @@ def test_built_sidecar_validates_156_profiles():
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert "156 profile(s) valid" in result.stdout
+    assert "157 profile(s) valid" in result.stdout
 
 
 @pytest.mark.skipif(not APP_EXE.is_file(), reason="app has not been built")
@@ -225,7 +225,7 @@ def test_built_app_reports_its_version():
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "CleanYourPhone app 0.2.1"
+    assert result.stdout.strip() == "CleanYourPhone app 0.2.2"
 
 
 @pytest.mark.skipif(not SETUP_EXE.is_file(), reason="installer has not been built")
