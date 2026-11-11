@@ -102,7 +102,7 @@ localement.
 SHA-256 de l’installateur publié `v0.2.1` :
 
 ```text
-B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
+E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
 ```
 
 L’installateur est propre à chaque utilisateur, crée un raccourci dans le menu Démarrer et ne nécessite

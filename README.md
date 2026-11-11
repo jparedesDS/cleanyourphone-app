@@ -101,7 +101,7 @@ locally.
 SHA-256 of the published `v0.2.1` installer:
 
 ```text
-B522B70B5F56B837EEE54F60D726C56F742667CF6B8B1BE52A913DD99C2D98E1
+E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
 ```
 
 The installer is per-user, creates a Start Menu shortcut, and does not require administrator rights.
