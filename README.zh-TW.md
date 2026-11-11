@@ -102,7 +102,7 @@
 已發佈 `v0.2.2` 安裝程式的 SHA-256：
 
 ```text
-E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
+B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
 ```
 
 安裝程式以每位使用者為範圍，會建立開始功能表捷徑，且不需要系統管理員權限。它會安裝到
@@ -174,7 +174,7 @@ python -m cleanyourphone_app --version
 
 應用程式的測試套件涵蓋連線防護、序號綁定、documented 設定檔確認、每批只套用一個、備份
 把關、復原、意見回饋內容、意見回饋同意與 UI 文案。已發佈的 `0.2.2` 測試套件結果為
-**520 通過、1 略過**。
+**526 通過、6 略過**。
 
 ## 儲存庫導覽
 
@@ -188,7 +188,7 @@ python -m cleanyourphone_app --version
 | `scripts/build-app.ps1` | 建置應用程式、進行 smoke test 並編譯安裝程式。 |
 | `packaging/installer.iss` | 每位使用者的 Inno Setup 安裝程式。 |
 | `docs/superpowers/` | 歷史設計與實作計畫。 |
-| `tests/` | Pytest 測試套件；`0.2.2` 上 520 通過、1 略過。 |
+| `tests/` | Pytest 測試套件；`0.2.2` 上 526 通過、6 略過。 |
 
 ## 限制
 

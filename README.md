@@ -104,7 +104,7 @@ locally.
 SHA-256 of the published `v0.2.2` installer:
 
 ```text
-E827AB24CB02E7C18F7577E6C00E263C1CCEC6683E7812E8F22222FC3AF216E3
+B5F70B2DBDF78F05B6637FB9671C4233F4C5E513EC9F51F0EF60798C94A8B30E
 ```
 
 The installer is per-user, creates a Start Menu shortcut, and does not require administrator rights.
@@ -178,7 +178,7 @@ python -m cleanyourphone_app --version
 
 The app suite covers the connection guards, serial pinning, documented-profile acknowledgement,
 one-per-batch apply, backup gating, undo, feedback payloads, feedback consent and UI copy. The
-published `0.2.2` suite result is **520 passed, 1 skipped**.
+published `0.2.2` suite result is **526 passed, 6 skipped**.
 
 ## Repository map
 
@@ -192,7 +192,7 @@ published `0.2.2` suite result is **520 passed, 1 skipped**.
 | `scripts/build-app.ps1` | Builds the app, smoke-tests it and compiles the installer. |
 | `packaging/installer.iss` | Per-user Inno Setup installer. |
 | `docs/superpowers/` | Historical design and implementation plan. |
-| `tests/` | Pytest suite; 520 passing, 1 skipped on `0.2.2`. |
+| `tests/` | Pytest suite; 526 passing, 6 skipped on `0.2.2`. |
 
 ## Limitations
 
